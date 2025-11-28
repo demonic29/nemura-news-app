@@ -10,7 +10,7 @@ export default function SplashWelcome() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace('/welcome') // 3秒後に Welcome ページへ
+      router.replace('/home') // 3秒後に ページへ
     }, 3000)
 
     return () => clearTimeout(timer)

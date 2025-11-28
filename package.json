@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@lottiefiles/react-lottie-player": "^3.6.0",
     "@tailwindcss/line-clamp": "^0.4.4",
     "next": "13.5.4",
     "react": "^18",

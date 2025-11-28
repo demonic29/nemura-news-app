@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja">
-      <body className={zenMaru.className}>{children}</body>
+        <body className={zenMaru.className}>{children}</body>
     </html>
   )
 }
