@@ -6,19 +6,17 @@ type BackgroundProps = {
 
 export default function Background({ children }: BackgroundProps) {
   return (
-    <div
-      style={{
-        position: "fixed",       // 画面全体に固定
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        background: "url('/bg.png') no-repeat center center",
-        backgroundSize: "cover",
-        zIndex: -1,              // 子要素より後ろに
-      }}
-    >
-      {children}
+    // min-h-screen を h-[100dvh] に変更し、はみ出しを禁止
+    <div className="relative w-full h-[100dvh] overflow-hidden"> 
+      <div
+        className="fixed inset-0 -z-10 bg-cover bg-center"
+        style={{
+          backgroundImage: "url('/bg.png')",
+        }}
+      />
+      <div className="relative z-10 flex flex-col items-center justify-center h-full">
+        {children}
+      </div>
     </div>
   );
 }

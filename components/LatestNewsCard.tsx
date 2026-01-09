@@ -3,7 +3,7 @@
 import { AddCircleIcon, PlayCircleIcon } from '@/app/assets/icons'
 import React, { useState, useEffect } from 'react'
 import SafeImage from './SafeImage'
-import { db } from '@/lib/firebase'
+import { db } from '@/app/lib/firebase/firebase'
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore'
 
 import {
@@ -101,7 +101,7 @@ export default function LatestNewsCard({i, playAudio, index, id}: any) {
 
                 <div className="flex-grow flex flex-col">
                     <Link href={`/latest/${i.title}`}>
-                        <h3 className="normal underline font-semibold text-gray-200 line-clamp-2">
+                        <h3 className="normal underline font-semibold text-gray-200 line-clamp-3">
                             {i.title}
                         </h3>
                     </Link>
@@ -130,7 +130,7 @@ export default function LatestNewsCard({i, playAudio, index, id}: any) {
                         />                    
                     </button>
 
-                    <button onClick={() => playAudio(i.title, "47")}>
+                    <button onClick={() => playAudio(i.title, "20")}>
                         <PlayCircleIcon className="w-7 h-7 text-gray-400 cursor-pointer" />
                     </button>
                 </div>

@@ -2,7 +2,7 @@ import Image from 'next/image';
 import React, { useState } from 'react'
 
 import sample from '@/public/sample.jpg';
-import { Post } from '@/lib/post';
+import { Post } from '@/app/lib/post';
 
 export default async function NewsDetailsPage({
     params

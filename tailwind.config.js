@@ -10,9 +10,15 @@ module.exports = {
   ],
   theme: {
     extend: {
+      dropShadow: {
+        'white-glow': '0 0 15px rgba(255, 255, 255, 0.3)',
+        'white-glow-str': '0 0 15px rgba(255, 255, 255, 1)',
+      },
       colors: {
-        "white-soft": "#FEFEFE",
-        "black-soft": "#222222",
+        'white-soft': '#FEFEFE',
+        'black-soft': '#222222', 
+        'gray-soft': '#4B5563', 
+        'button': '#1D57A6',
       },
       
       backgroundImage: {

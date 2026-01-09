@@ -27,6 +27,12 @@ body {
   @apply opacity-0 transition-opacity duration-500 ease-in-out;
 }
 
+.text-shadow-white {
+  text-shadow:
+    0 0 6px rgba(255, 255, 255, 0.9),
+    0 0 16px 
+}
+
 .title{
   @apply text-[24px] font-bold;
 }

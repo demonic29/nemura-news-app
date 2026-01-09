@@ -12,7 +12,7 @@ import fallBackImage from "@/public/fallback-img.png";
 import { AddCircleIcon, ArrowRightIcon, PlayCircleIcon } from "../assets/icons/index";
 
 // post_type
-import { HatenaItem } from "@/lib/post";
+import { HatenaItem } from "@/app/lib/post";
 import HeaderNav from "@/components/HeaderNav";
 import HomeHeader from "./HomeHeader";
 

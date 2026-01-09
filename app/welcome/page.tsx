@@ -1,78 +1,156 @@
-'use client'
+"use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Player } from "@lottiefiles/react-lottie-player";
-import sleepData from "@/app/assets/animations/sleep-nemura.json";
-import sleepImage from '@/app/assets/animations/sleep-click-nemura.png';
+import { useState, useEffect, Suspense } from "react"; // Suspense, useEffectを追加
+import { useRouter, useSearchParams } from "next/navigation"; // useSearchParamsを追加
+
 import Background from "@/components/Background";
-import SafeImage from "@/components/SafeImage";
+import DialogueBox from "@/components/DialogueBox";
+import LottiePlayer from "@/components/LottiePlayer";
+import Fade from "@/components/Fade";
 
-export default function Home() {
-  const [showPng, setShowPng] = useState(false);
-  const [showText, setShowText] = useState(false);
+import { ArrowRightIcon, FingerPointIcon } from "@/app/assets/icons/index";
+
+import sleepJson from "@/app/assets/animations/sleep-nemura.json";
+import smileJson from "@/app/assets/animations/smile-nemura.json";
+
+function WelcomeContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
+  const lines = [
+    <>Zzz...</>,
+    <>&#65281;</>,
+    <>
+      はじめまして...!<br />
+      僕の名前は <span className="text-yellow-300">ねむら</span>です
+    </>,
+    <>
+      この世界では毎日、<br />いろんなニュースが<br />あつまってきます
+    </>,
+    <>あなたはニュースを聞きに<br />
+      いらしたんですよね？<br />
+      少し質問よろしいですか？</>,
+  ];
+
+  // URLの index パラメータを取得
+  const initialIndex = Number(searchParams.get("index")) || 0;
+  const [index, setIndex] = useState(initialIndex);
+
+  // パラメータが直接書き換えられた場合にも対応
   useEffect(() => {
-    // 3秒後に PNG 切り替え + セリフ表示
-    const t1 = setTimeout(() => {
-      setShowPng(true);
-      setShowText(true);
-    }, 3000);
+    const idx = searchParams.get("index");
+    if (idx !== null) {
+      setIndex(Number(idx));
+    }
+  }, [searchParams]);
 
-    // 10秒後にリダイレクト
-    const t2 = setTimeout(() => {
-      router.push("/home");
-    }, 13000);
+  const handleNext = () => {
+    if (index < lines.length - 1) {
+      setIndex(index + 1);
+    } else {
+      router.push("/welcome/choose-topic");
+    }
+  };
 
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [router]);
+  const handleBack = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (index > 0) {
+      setIndex(index - 1);
+    }
+  };
+
+  const currentAnimation = index === 0 ? sleepJson : smileJson;
+  const isFirstPage = index === 0;
 
   return (
-    <Background>
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 flex flex-col items-center">
-        {showText && (
-          <p className="mb-3 text-white text-xl leading-6 opacity-0 animate-fadeIn">
-            今日もおつかれさま
-            <br />
-            さっそく今日の世界を見てみる？
-          </p>
-        )}
+    <div 
+      className={`relative w-full h-[100dvh] overflow-hidden touch-none ${isFirstPage ? "cursor-pointer" : ""}`}
+      onClick={isFirstPage ? handleNext : undefined}
+    >
+      
+      {/* セリフ部分 */}
+      <div className="absolute left-0 top-[27%] w-full flex justify-center px-6 drop-shadow-white-glow">
+        <Fade key={index}>
+          <DialogueBox>{lines[index]}</DialogueBox>
+        </Fade>
+      </div>
 
-        {/* 共通のコンテナでサイズを統一 */}
-        <div style={{ width: 300, height: 300, position: "relative" }}>
-          {showPng ? (
-            <SafeImage
-              src={sleepImage}
-              alt="sleep"
-              sizes="100vw"
-              fill
-              style={{ objectFit: "contain", pointerEvents: "none" }}
-            />
+      {/* ねむら ＋ ボタンエリア */}
+      <div
+        className="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center"
+        style={{
+          top: "50%", 
+          width: "95%", 
+          maxWidth: "400px"
+        }}
+      >
+        {/* アニメーション本体コンテナ */}
+        <div className="relative shrink-0" style={{ width: 280, height: 280 }}>
+          
+          {/* 指さしアイコン */}
+          {isFirstPage && (
+            <div className="absolute -right-0 -top-4 z-20 animate-bounce pointer-events-none" style={{ animationDuration: '2s' }}>
+              <FingerPointIcon className="w-18 h-18 text-white-soft drop-shadow-white-glow" />
+            </div>
+          )}
+
+          {index === 1 ? (
+            <Fade>
+              <LottiePlayer data={currentAnimation} width={280} height={280} />
+            </Fade>
           ) : (
-            <Player
-              autoplay
-              loop
-              src={sleepData}
-              style={{ width: "100%", height: "100%", pointerEvents: "none" }}
-            />
+            <LottiePlayer data={currentAnimation} width={280} height={280} />
           )}
         </div>
 
-        <style jsx>{`
-          @keyframes fadeIn {
-            to {
-              opacity: 1;
-            }
-          }
-          .animate-fadeIn {
-            animation: fadeIn 2s forwards;
-          }
-        `}</style>
+        {/* ボタンエリア */}
+        <div className="w-full mt-10 flex justify-between items-center px-2 min-h-[60px]">
+          {isFirstPage ? (
+            <div className="w-full">
+              <p className="text-white-soft text-center text-[20px] font-bold animate-pulse drop-shadow-white-glow">
+                タップして起こそう
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex-1 flex justify-start">
+                {index > 1 && (
+                  <button
+                    onClick={handleBack}
+                    className="flex items-center gap-1 text-white-soft bg-button backdrop-blur-md border border-white/0 px-4 py-2 rounded-full transition-all active:scale-95 drop-shadow-white-glow"
+                  >
+                    <ArrowRightIcon className="rotate-180 w-5 h-5" />
+                    <span className="text-base font-medium">もどる</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="flex-1 flex justify-end">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNext();
+                  }}
+                  className="flex items-center gap-1 text-white-soft bg-button backdrop-blur-md border border-white/0 px-6 py-2.5 rounded-full font-bold transition-all active:scale-95 drop-shadow-white-glow"
+                >
+                  <span className="text-base">次へ</span>
+                  <ArrowRightIcon className="w-5 h-5" />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
+    </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Background>
+      <Suspense fallback={null}>
+        <WelcomeContent />
+      </Suspense>
     </Background>
   );
 }
