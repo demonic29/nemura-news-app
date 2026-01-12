@@ -1,22 +1,26 @@
 import React, { ReactNode } from "react";
 
 type BackgroundProps = {
-  children: ReactNode;
-};
+  children: ReactNode
+  variant?: 'day' | 'night'
+}
 
-export default function Background({ children }: BackgroundProps) {
+export default function Background({
+  children,
+  variant = 'day',
+}: BackgroundProps) {
+  const bgImage =
+    variant === 'night' ? "/bg-night.png" : "/bg.png"
+
   return (
-    // min-h-screen を h-[100dvh] に変更し、はみ出しを禁止
-    <div className="relative w-full h-[100dvh] overflow-hidden"> 
+    <div className="relative w-full h-[100dvh] overflow-hidden">
       <div
         className="fixed inset-0 -z-10 bg-cover bg-center"
-        style={{
-          backgroundImage: "url('/bg.png')",
-        }}
+        style={{ backgroundImage: `url('${bgImage}')` }}
       />
       <div className="relative z-10 flex flex-col items-center justify-center h-full">
         {children}
       </div>
     </div>
-  );
+  )
 }
