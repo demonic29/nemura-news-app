@@ -7,6 +7,7 @@ import NavigationHeader from "@/components/NavigationHeader"
 import NewsPlayer from "@/components/NewsPlayer"
 import Wave from '@/assets/graphics/wave.svg'
 import { useVoicePlayer } from '@/context/VoicePlayerContext'
+import BottomNavigationBar from "@/components/BottomNavigationBar";
 
 export default function Page() {
   const { currentItem } = useVoicePlayer()
@@ -20,6 +21,9 @@ export default function Page() {
       <div className="h-[54px] shrink-0">
         <NavigationHeader />
       </div>
+
+      {/* ナビバー */}
+      <BottomNavigationBar />
 
       {/* ニュースプレイヤー */}
       <div className="flex-1 relative z-10 pb-[36px]">

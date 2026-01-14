@@ -10,6 +10,7 @@ import SafeImage from "@/components/SafeImage";
 import NavigationHeader from "@/components/NavigationHeader";
 import VoiceNewsCard, { VoiceItem } from "@/components/NewsCard";
 import VerticalNewsCard from "@/components/VerticalNewsCard";
+import BottomNavigationBar from "@/components/BottomNavigationBar";
 import { Characters } from "@/app/ai-character/config"; // キャラクター情報をインポート
 
 type HatenaItem = {
@@ -67,6 +68,7 @@ export default function HomePage() {
 
   return (
     <div className="bg-background-light h-screen w-full px-0 relative flex flex-col overflow-hidden">
+      <BottomNavigationBar />
       <div className="pt-[54px] shrink-0">
         <NavigationHeader title="最新ニュース" showBack={false} />
       </div>

@@ -16,6 +16,7 @@ import GraphicComponent from './graphic.svg';
 import SpeechToTextComponent from './speech_to_text.svg';
 import OnexMobiledataComponent from './1x_mobiledata.svg';
 import BedtimeComponent from './bedtime.svg';
+import HomeComponent from './home.svg';
 import SettingComponent from './setting.svg';
 
 // 外部コンポーネントが利用しやすい名前でエクスポート
@@ -34,4 +35,5 @@ export const GraphicIcon = GraphicComponent;
 export const OnexMobiledataIcon = OnexMobiledataComponent;
 export const SpeechToTextIcon = SpeechToTextComponent;
 export const BedtimeIcon = BedtimeComponent;
+export const HomeIcon = HomeComponent;
 export const SettingIcon = SettingComponent;
