@@ -1,3 +1,5 @@
+// voice-player
+
 'use client'
 
 import React, { useState, useEffect } from "react"
@@ -18,6 +20,7 @@ type HatenaNews = {
   description: string
   url?: string
   id: string
+  className?: string
 }
 
 type AudioLoadingState = {
@@ -297,7 +300,7 @@ export default function Page() {
         className="h-screen w-full relative flex flex-col overflow-hidden pt-[54px]"
         style={{ backgroundImage: 'linear-gradient(to bottom, #00040a, #003569, #004E9A)' }}
       >
-        <NavigationHeader />
+        <NavigationHeader className="px-6"/>
 
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -322,7 +325,7 @@ export default function Page() {
         className="h-screen w-full relative flex flex-col overflow-hidden pt-[54px]"
         style={{ backgroundImage: 'linear-gradient(to bottom, #00040a, #003569, #004E9A)' }}
       >
-        <NavigationHeader />
+        <NavigationHeader className="px-6"/>
 
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
