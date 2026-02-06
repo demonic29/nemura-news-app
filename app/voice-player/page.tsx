@@ -205,7 +205,7 @@ export default function Page() {
               setSelectedVoice(matchedVoice.id)
               setSelectedSpeaker(matchedVoice.speaker)
               console.log("Voice loaded from Firebase:", matchedVoice.label)
-              
+
               // NEW: Optionally fetch cached audio for this speaker
               // await fetchCachedAudioBySpeaker(matchedVoice.speaker)
             } else {
@@ -315,7 +315,7 @@ export default function Page() {
     try {
       // Create a unique cache key based on content and speaker
       const cacheKey = `${newsId}_${speaker}_${hashString(title + description)}`
-      
+
       const { data, error } = await supabase
         .from('news_audio_cache')
         .select('audio_url')
@@ -355,7 +355,7 @@ export default function Page() {
 
     try {
       const cacheKey = `${newsId}_${speaker}_${hashString(title + description)}`
-      
+
       const { error } = await supabase
         .from('news_audio_cache')
         .upsert({
@@ -397,19 +397,7 @@ export default function Page() {
   // Generate audio for current news item
   const getNewsId = (news: HatenaNews, index: number) => news.id || `idx-${index}`;
 
-  useEffect(() => {
-    if (newsItems.length === 0 || !selectedSpeaker) return;
 
-    const currentNews = newsItems[currentIndex];
-    const newsId = getNewsId(currentNews, currentIndex);
-
-    if (audioUrls[newsId] || audioLoadingStates[newsId] === 'loading') {
-      console.log('Audio already exists or loading for:', newsId)
-      return
-    }
-
-    generateAudioForNews(currentNews, newsId, selectedSpeaker)
-  }, [audioLoadingStates, audioUrls, currentIndex, newsItems, selectedSpeaker])
 
   // Pre-generate audio for next items in background
   useEffect(() => {
@@ -472,7 +460,7 @@ export default function Page() {
       const data = await response.json()
 
       console.log('Audio generated for', newsId, ':', data.audioUrl)
-      
+
       // Store in cache for future use
       await storeAudioInCache(
         newsId,
@@ -489,6 +477,20 @@ export default function Page() {
       setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'error' }))
     }
   }
+
+  useEffect(() => {
+    if (newsItems.length === 0 || !selectedSpeaker) return;
+
+    const currentNews = newsItems[currentIndex];
+    const newsId = getNewsId(currentNews, currentIndex);
+
+    if (audioUrls[newsId] || audioLoadingStates[newsId] === 'loading') {
+      console.log('Audio already exists or loading for:', newsId)
+      return
+    }
+
+    generateAudioForNews(currentNews, newsId, selectedSpeaker)
+  }, [audioLoadingStates, audioUrls, currentIndex, generateAudioForNews, newsItems, selectedSpeaker])
 
   // auto-play
   const [isPlaying, setIsPlaying] = useState(false);
@@ -555,7 +557,7 @@ export default function Page() {
         className="h-screen w-full relative flex flex-col overflow-hidden pt-[54px]"
         style={{ backgroundImage: 'linear-gradient(to bottom, #00040a, #003569, #004E9A)' }}
       >
-        <NavigationHeader className="px-6"/>
+        <NavigationHeader className="px-6" />
 
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -580,7 +582,7 @@ export default function Page() {
         className="h-screen w-full relative flex flex-col overflow-hidden pt-[54px]"
         style={{ backgroundImage: 'linear-gradient(to bottom, #00040a, #003569, #004E9A)' }}
       >
-        <NavigationHeader className="px-6"/>
+        <NavigationHeader className="px-6" />
 
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">

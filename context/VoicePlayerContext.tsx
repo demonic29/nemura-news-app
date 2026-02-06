@@ -17,6 +17,8 @@ type VoicePlayerContextType = {
   setNewsItems: (items: VoiceItem[]) => void
   currentIndex: number
   setCurrentIndex: (index: number) => void
+  playing: boolean
+  setPlaying: (playing: boolean) => void
 }
 
 const VoicePlayerContext = createContext<VoicePlayerContextType | undefined>(undefined)
@@ -25,6 +27,7 @@ export function VoicePlayerProvider({ children }: { children: ReactNode }) {
   const [currentItem, setCurrentItemState] = useState<VoiceItem | null>(null)
   const [newsItems, setNewsItems] = useState<VoiceItem[]>([])
   const [currentIndex, setCurrentIndexState] = useState(0)
+  const [playing, setPlaying] = useState(false)
 
   const setCurrentItem = (item: VoiceItem | null) => {
     setCurrentItemState(item)
@@ -46,6 +49,8 @@ export function VoicePlayerProvider({ children }: { children: ReactNode }) {
         setNewsItems,
         currentIndex,
         setCurrentIndex,
+        playing,
+        setPlaying,
       }}
     >
       {children}
