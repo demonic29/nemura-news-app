@@ -130,9 +130,9 @@ export default function TopicSelectionPage() {
                   `}
                 >
                   {isSelected ? (
-                    <RemoveCircleIcon className="shrink-0" />
+                    <RemoveCircleIcon className=" shrink-0" />
                   ) : (
-                    <AddCircleIcon className="shrink-0 text-gray-soft" />
+                    <AddCircleIcon className=" shrink-0 text-gray-soft" />
                   )}
                   <span className="text-[15px] font-bold truncate">
                     {topic["dc:subject"]}

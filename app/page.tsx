@@ -41,7 +41,7 @@ export default function RootPage() {
 
   if (checking) {
     return (
-      <div className="w-full h-screen flex items-center justify-center bg-gradient-to-b from-blue-900 to-purple-900">
+      <div className="w-full h-screen flex items-center justify-center bg-gradient-to-b">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-white-soft">読み込み中...</p>

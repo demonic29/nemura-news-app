@@ -11,6 +11,9 @@ import { auth, db } from "@/app/lib/firebase/firebase"
 import { doc, getDoc } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
 
+// supabase
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
+
 // components
 import NavigationHeader from "@/components/NavigationHeader"
 import NewsPlayer from "@/components/NewsPlayer"
@@ -27,6 +30,18 @@ type AudioLoadingState = {
   [newsId: string]: 'idle' | 'loading' | 'ready' | 'error'
 }
 
+// Supabase types
+type NewsAudioCache = {
+  id: string
+  news_id: string
+  title: string
+  description: string
+  audio_url: string
+  speaker: string
+  created_at: string
+  updated_at: string
+}
+
 export const VOICES = [
   { id: "electronic", label: "電子的な声", speaker: "54", word: "電子的な声です" },
   { id: "cool", label: "冷静な声", speaker: "47", word: "冷静な声" },
@@ -36,6 +51,17 @@ export const VOICES = [
 ]
 
 const MAX_NEWS_ITEMS = 3
+
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+// Note: Initialize only on client side
+let supabase: SupabaseClient | null = null
+
+if (typeof window !== 'undefined' && supabaseUrl && supabaseAnonKey) {
+  supabase = createClient(supabaseUrl, supabaseAnonKey)
+}
 
 export default function Page() {
   const router = useRouter()
@@ -50,6 +76,114 @@ export default function Page() {
   const [userId, setUserId] = useState<string | null>(null)
   const [autoPlay, setAutoPlay] = useState(false)
 
+  // NEW: Fetch all cached audio data from Supabase
+  const fetchAllCachedAudio = async (): Promise<NewsAudioCache[]> => {
+    if (!supabase) {
+      console.error("Supabase client not initialized")
+      return []
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('news_audio_cache')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching cached audio:', error)
+        return []
+      }
+
+      console.log('Fetched cached audio items:', data?.length || 0)
+      return data || []
+    } catch (error) {
+      console.error('Error fetching all cached audio:', error)
+      return []
+    }
+  }
+
+  // NEW: Fetch cached audio by speaker
+  const fetchCachedAudioBySpeaker = async (speaker: string): Promise<NewsAudioCache[]> => {
+    if (!supabase) {
+      console.error("Supabase client not initialized")
+      return []
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('news_audio_cache')
+        .select('*')
+        .eq('speaker', speaker)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching cached audio by speaker:', error)
+        return []
+      }
+
+      console.log(`Fetched cached audio for speaker ${speaker}:`, data?.length || 0)
+      return data || []
+    } catch (error) {
+      console.error('Error fetching cached audio by speaker:', error)
+      return []
+    }
+  }
+
+  // NEW: Fetch cached audio by news ID
+  const fetchCachedAudioByNewsId = async (newsId: string): Promise<NewsAudioCache[]> => {
+    if (!supabase) {
+      console.error("Supabase client not initialized")
+      return []
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('news_audio_cache')
+        .select('*')
+        .eq('news_id', newsId)
+
+      if (error) {
+        console.error('Error fetching cached audio by news ID:', error)
+        return []
+      }
+
+      console.log(`Fetched cached audio for news ${newsId}:`, data?.length || 0)
+      return data || []
+    } catch (error) {
+      console.error('Error fetching cached audio by news ID:', error)
+      return []
+    }
+  }
+
+  // NEW: Delete old cache entries (optional - for cleanup)
+  const deleteOldCacheEntries = async (daysOld: number = 7): Promise<number> => {
+    if (!supabase) {
+      console.error("Supabase client not initialized")
+      return 0
+    }
+
+    try {
+      const cutoffDate = new Date()
+      cutoffDate.setDate(cutoffDate.getDate() - daysOld)
+
+      const { data, error } = await supabase
+        .from('news_audio_cache')
+        .delete()
+        .lt('created_at', cutoffDate.toISOString())
+        .select()
+
+      if (error) {
+        console.error('Error deleting old cache entries:', error)
+        return 0
+      }
+
+      console.log(`Deleted ${data?.length || 0} old cache entries`)
+      return data?.length || 0
+    } catch (error) {
+      console.error('Error deleting old cache entries:', error)
+      return 0
+    }
+  }
 
   // Fetch user's voice preference from Firebase
   useEffect(() => {
@@ -71,6 +205,9 @@ export default function Page() {
               setSelectedVoice(matchedVoice.id)
               setSelectedSpeaker(matchedVoice.speaker)
               console.log("Voice loaded from Firebase:", matchedVoice.label)
+              
+              // NEW: Optionally fetch cached audio for this speaker
+              // await fetchCachedAudioBySpeaker(matchedVoice.speaker)
             } else {
               console.warn("No matching voice found, using default")
               setSelectedVoice(VOICES[0].id)
@@ -135,7 +272,7 @@ export default function Page() {
         let newsData = mockNews
 
         try {
-          const response = await fetch("/api/hatena?type=new")
+          const response = await fetch("/api/hatena?type=popular")
           if (response.ok) {
             const fetchedNews = await response.json()
             newsData = Array.isArray(fetchedNews)
@@ -148,6 +285,10 @@ export default function Page() {
 
         setNewsItems(newsData.slice(0, MAX_NEWS_ITEMS))
 
+        // NEW: Optionally fetch all cached audio when component mounts
+        // const cachedAudio = await fetchAllCachedAudio()
+        // console.log('All cached audio:', cachedAudio)
+
       } catch (e) {
         console.error("Error fetching news:", e)
         setError("ニュースの取得に失敗しました")
@@ -159,6 +300,100 @@ export default function Page() {
     fetchNews()
   }, [])
 
+  // Check cache in Supabase for existing audio
+  const checkAudioCache = async (
+    newsId: string,
+    title: string,
+    description: string,
+    speaker: string
+  ): Promise<string | null> => {
+    if (!supabase) {
+      console.error("Supabase client not initialized")
+      return null
+    }
+
+    try {
+      // Create a unique cache key based on content and speaker
+      const cacheKey = `${newsId}_${speaker}_${hashString(title + description)}`
+      
+      const { data, error } = await supabase
+        .from('news_audio_cache')
+        .select('audio_url')
+        .eq('id', cacheKey)
+        .single()
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No rows returned - cache miss
+          console.log('Cache miss for:', cacheKey)
+          return null
+        }
+        console.error('Error checking cache:', error)
+        return null
+      }
+
+      console.log('Cache hit for:', cacheKey)
+      return data.audio_url
+    } catch (error) {
+      console.error('Error checking audio cache:', error)
+      return null
+    }
+  }
+
+  // Store audio URL in Supabase cache
+  const storeAudioInCache = async (
+    newsId: string,
+    title: string,
+    description: string,
+    speaker: string,
+    audioUrl: string
+  ): Promise<boolean> => {
+    if (!supabase) {
+      console.error("Supabase client not initialized")
+      return false
+    }
+
+    try {
+      const cacheKey = `${newsId}_${speaker}_${hashString(title + description)}`
+      
+      const { error } = await supabase
+        .from('news_audio_cache')
+        .upsert({
+          id: cacheKey,
+          news_id: newsId,
+          title,
+          description,
+          audio_url: audioUrl,
+          speaker,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
+        })
+
+      if (error) {
+        console.error('Error storing audio in cache:', error)
+        return false
+      }
+
+      console.log('Audio stored in cache:', cacheKey)
+      return true
+    } catch (error) {
+      console.error('Error storing audio in cache:', error)
+      return false
+    }
+  }
+
+  // Helper function to create hash of string
+  const hashString = (str: string): string => {
+    let hash = 0
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString(16)
+  }
+
   // Generate audio for current news item
   const getNewsId = (news: HatenaNews, index: number) => news.id || `idx-${index}`;
 
@@ -166,7 +401,6 @@ export default function Page() {
     if (newsItems.length === 0 || !selectedSpeaker) return;
 
     const currentNews = newsItems[currentIndex];
-
     const newsId = getNewsId(currentNews, currentIndex);
 
     if (audioUrls[newsId] || audioLoadingStates[newsId] === 'loading') {
@@ -176,7 +410,6 @@ export default function Page() {
 
     generateAudioForNews(currentNews, newsId, selectedSpeaker)
   }, [audioLoadingStates, audioUrls, currentIndex, newsItems, selectedSpeaker])
-
 
   // Pre-generate audio for next items in background
   useEffect(() => {
@@ -205,6 +438,22 @@ export default function Page() {
     setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'loading' }))
 
     try {
+      // First, check cache
+      const cachedAudioUrl = await checkAudioCache(
+        newsId,
+        news.title,
+        news.description,
+        speaker
+      )
+
+      if (cachedAudioUrl) {
+        console.log('Using cached audio for', newsId)
+        setAudioUrls(prev => ({ ...prev, [newsId]: cachedAudioUrl }))
+        setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'ready' }))
+        return
+      }
+
+      // If not in cache, generate new audio
       const response = await fetch("/api/pregenerate-news-audio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -223,6 +472,16 @@ export default function Page() {
       const data = await response.json()
 
       console.log('Audio generated for', newsId, ':', data.audioUrl)
+      
+      // Store in cache for future use
+      await storeAudioInCache(
+        newsId,
+        news.title,
+        news.description,
+        speaker,
+        data.audioUrl
+      )
+
       setAudioUrls(prev => ({ ...prev, [newsId]: data.audioUrl }))
       setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'ready' }))
     } catch (error) {
@@ -243,7 +502,6 @@ export default function Page() {
     }
   };
 
-
   const handlePrev = () => {
     if (currentIndex > 0) {
       console.log('Moving to previous:', currentIndex - 1)
@@ -259,7 +517,6 @@ export default function Page() {
       setIsPlaying(true);
     }
   }, [currentIndex, audioUrls, audioLoadingStates, newsItems]);
-
 
   const calculateDuration = (title: string, description: string) => {
     const totalText = `${title}${description}`
@@ -290,8 +547,6 @@ export default function Page() {
   const audioState = audioLoadingStates[newsId] || 'idle'
 
   console.log('Rendering - Current:', currentIndex, 'NewsID:', newsId, 'AudioURL:', audioUrl)
-
-
 
   // Show loading screen while generating audio for current item
   if (audioState === 'loading' && !audioUrl) {
@@ -355,7 +610,7 @@ export default function Page() {
 
       <div className="flex-1 relative z-10 pb-[36px]">
         <NewsPlayer
-          key={newsId} // Add key prop to force re-render on news change
+          key={newsId}
           showNemura
           audioUrl={audioUrl}
           item={{
@@ -375,10 +630,6 @@ export default function Page() {
           setIsPlaying={setIsPlaying}
         />
       </div>
-
-      {/* <div className="absolute top-[70px] right-8 text-white/60 text-sm z-20">
-        {currentIndex + 1} / {newsItems.length}
-      </div> */}
 
       <div className="absolute bottom-0 left-0 w-full z-0 pointer-events-none">
         <Wave className="w-full h-auto" />

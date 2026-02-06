@@ -189,7 +189,7 @@ function VoiceButton({
         `}
       >
         <GraphicIcon
-          className={`scale-[1.5] ${isSelected ? "animate-pulse" : ""}`}
+          className={` ${isSelected ? "animate-pulse" : ""}`}
         />
       </div>
 

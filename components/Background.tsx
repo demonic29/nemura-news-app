@@ -10,12 +10,12 @@ export default function Background({ children, variant = "default" }: Background
   const backgroundImage = variant === "night" ? "/bg-night.png" : "/bg.png";
 
   return (
-    // h-[100dvh] で画面高さを固定、overflow-hidden ではみ出し防止
-    <div className="relative w-full h-[100dvh] overflow-hidden">
+    // min-h-screen を h-[100dvh] に変更し、はみ出しを禁止
+    <div className="relative w-full"> 
       <div
-        className="fixed inset-0 -z-10 bg-cover bg-center"
+        className="fixed inset-0 -z-10 bg-cover bg-top"
         style={{
-          backgroundImage: `url('${backgroundImage}')`,
+          backgroundImage: "url('/bg2.png')",
         }}
       />
       <div className="relative z-10 flex flex-col items-center justify-center h-full">
