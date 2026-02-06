@@ -81,13 +81,13 @@ export default function PlaylistPage() {
         setPlaying(true)
     }
 
-    const handleCloseMini = () => {
-        setPlaying(false)
-        setCurrentItem(null)
-    }
-
     // 外クリックでMiniPlayerを閉じる
     useEffect(() => {
+        const handleCloseMini = () => {
+            setPlaying(false)
+            setCurrentItem(null)
+        }
+
         const handleClickOutside = (event: MouseEvent) => {
             if (
                 miniPlayerRef.current &&
@@ -102,7 +102,7 @@ export default function PlaylistPage() {
         return () => {
             document.removeEventListener("mousedown", handleClickOutside)
         }
-    }, [playing])
+    }, [playing, setCurrentItem, setPlaying])
 
     return (
         <div className="bg-background-light h-screen w-full relative flex flex-col overflow-hidden">

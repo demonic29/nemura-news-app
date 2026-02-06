@@ -2,7 +2,7 @@
 
 'use client'
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Wave from '@/assets/graphics/wave.svg'
 
@@ -17,6 +17,9 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 // components
 import NavigationHeader from "@/components/NavigationHeader"
 import NewsPlayer from "@/components/NewsPlayer"
+
+// voices
+import { VOICES } from "@/app/lib/voices"
 
 type HatenaNews = {
   title: string
@@ -42,13 +45,6 @@ type NewsAudioCache = {
   updated_at: string
 }
 
-export const VOICES = [
-  { id: "electronic", label: "電子的な声", speaker: "54", word: "電子的な声です" },
-  { id: "cool", label: "冷静な声", speaker: "47", word: "冷静な声" },
-  { id: "child", label: "子どもの声", speaker: "42", word: "子どもの声" },
-  { id: "low", label: "低音な声", speaker: "13", word: "低音な声" },
-  { id: "warm", label: "あたたかい声", speaker: "24", word: "あたたかい声" },
-]
 
 const MAX_NEWS_ITEMS = 3
 
@@ -63,6 +59,17 @@ if (typeof window !== 'undefined' && supabaseUrl && supabaseAnonKey) {
   supabase = createClient(supabaseUrl, supabaseAnonKey)
 }
 
+// Helper function to create hash of string (moved outside component)
+const hashString = (str: string): string => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(16)
+}
+
 export default function Page() {
   const router = useRouter()
   const [newsItems, setNewsItems] = useState<HatenaNews[]>([])
@@ -75,6 +82,7 @@ export default function Page() {
   const [selectedSpeaker, setSelectedSpeaker] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [autoPlay, setAutoPlay] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
 
   // NEW: Fetch all cached audio data from Supabase
   const fetchAllCachedAudio = async (): Promise<NewsAudioCache[]> => {
@@ -185,6 +193,152 @@ export default function Page() {
     }
   }
 
+  // Check cache in Supabase for existing audio
+  const checkAudioCache = useCallback(async (
+    newsId: string,
+    title: string,
+    description: string,
+    speaker: string
+  ): Promise<string | null> => {
+    if (!supabase) {
+      console.error("Supabase client not initialized")
+      return null
+    }
+
+    try {
+      // Create a unique cache key based on content and speaker
+      const cacheKey = `${newsId}_${speaker}_${hashString(title + description)}`
+
+      const { data, error } = await supabase
+        .from('news_audio_cache')
+        .select('audio_url')
+        .eq('id', cacheKey)
+        .single()
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No rows returned - cache miss
+          console.log('Cache miss for:', cacheKey)
+          return null
+        }
+        console.error('Error checking cache:', error)
+        return null
+      }
+
+      console.log('Cache hit for:', cacheKey)
+      return data.audio_url
+    } catch (error) {
+      console.error('Error checking audio cache:', error)
+      return null
+    }
+  }, [])
+
+  // Store audio URL in Supabase cache
+  const storeAudioInCache = useCallback(async (
+    newsId: string,
+    title: string,
+    description: string,
+    speaker: string,
+    audioUrl: string
+  ): Promise<boolean> => {
+    if (!supabase) {
+      console.error("Supabase client not initialized")
+      return false
+    }
+
+    try {
+      const cacheKey = `${newsId}_${speaker}_${hashString(title + description)}`
+
+      const { error } = await supabase
+        .from('news_audio_cache')
+        .upsert({
+          id: cacheKey,
+          news_id: newsId,
+          title,
+          description,
+          audio_url: audioUrl,
+          speaker,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
+        })
+
+      if (error) {
+        console.error('Error storing audio in cache:', error)
+        return false
+      }
+
+      console.log('Audio stored in cache:', cacheKey)
+      return true
+    } catch (error) {
+      console.error('Error storing audio in cache:', error)
+      return false
+    }
+  }, [])
+
+  // Generate audio for current news item
+  const generateAudioForNews = useCallback(async (
+    news: HatenaNews,
+    newsId: string,
+    speaker: string
+  ) => {
+    setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'loading' }))
+
+    try {
+      // First, check cache
+      const cachedAudioUrl = await checkAudioCache(
+        newsId,
+        news.title,
+        news.description,
+        speaker
+      )
+
+      if (cachedAudioUrl) {
+        console.log('Using cached audio for', newsId)
+        setAudioUrls(prev => ({ ...prev, [newsId]: cachedAudioUrl }))
+        setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'ready' }))
+        return
+      }
+
+      // If not in cache, generate new audio
+      const response = await fetch("/api/pregenerate-news-audio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          newsId,
+          title: news.title,
+          description: news.description,
+          speaker
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate audio')
+      }
+
+      const data = await response.json()
+
+      console.log('Audio generated for', newsId, ':', data.audioUrl)
+
+      // Store in cache for future use
+      await storeAudioInCache(
+        newsId,
+        news.title,
+        news.description,
+        speaker,
+        data.audioUrl
+      )
+
+      setAudioUrls(prev => ({ ...prev, [newsId]: data.audioUrl }))
+      setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'ready' }))
+    } catch (error) {
+      console.error(`Error generating audio for ${newsId}:`, error)
+      setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'error' }))
+    }
+  }, [checkAudioCache, storeAudioInCache])
+
+  const getNewsId = useCallback((news: HatenaNews, index: number) => news.id || `idx-${index}`, [])
+
   // Fetch user's voice preference from Firebase
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -205,9 +359,6 @@ export default function Page() {
               setSelectedVoice(matchedVoice.id)
               setSelectedSpeaker(matchedVoice.speaker)
               console.log("Voice loaded from Firebase:", matchedVoice.label)
-
-              // NEW: Optionally fetch cached audio for this speaker
-              // await fetchCachedAudioBySpeaker(matchedVoice.speaker)
             } else {
               console.warn("No matching voice found, using default")
               setSelectedVoice(VOICES[0].id)
@@ -285,10 +436,6 @@ export default function Page() {
 
         setNewsItems(newsData.slice(0, MAX_NEWS_ITEMS))
 
-        // NEW: Optionally fetch all cached audio when component mounts
-        // const cachedAudio = await fetchAllCachedAudio()
-        // console.log('All cached audio:', cachedAudio)
-
       } catch (e) {
         console.error("Error fetching news:", e)
         setError("ニュースの取得に失敗しました")
@@ -300,104 +447,20 @@ export default function Page() {
     fetchNews()
   }, [])
 
-  // Check cache in Supabase for existing audio
-  const checkAudioCache = async (
-    newsId: string,
-    title: string,
-    description: string,
-    speaker: string
-  ): Promise<string | null> => {
-    if (!supabase) {
-      console.error("Supabase client not initialized")
-      return null
+  // Generate audio for current item
+  useEffect(() => {
+    if (newsItems.length === 0 || !selectedSpeaker) return
+
+    const currentNews = newsItems[currentIndex]
+    const newsId = getNewsId(currentNews, currentIndex)
+
+    if (audioUrls[newsId] || audioLoadingStates[newsId] === 'loading') {
+      console.log('Audio already exists or loading for:', newsId)
+      return
     }
 
-    try {
-      // Create a unique cache key based on content and speaker
-      const cacheKey = `${newsId}_${speaker}_${hashString(title + description)}`
-
-      const { data, error } = await supabase
-        .from('news_audio_cache')
-        .select('audio_url')
-        .eq('id', cacheKey)
-        .single()
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // No rows returned - cache miss
-          console.log('Cache miss for:', cacheKey)
-          return null
-        }
-        console.error('Error checking cache:', error)
-        return null
-      }
-
-      console.log('Cache hit for:', cacheKey)
-      return data.audio_url
-    } catch (error) {
-      console.error('Error checking audio cache:', error)
-      return null
-    }
-  }
-
-  // Store audio URL in Supabase cache
-  const storeAudioInCache = async (
-    newsId: string,
-    title: string,
-    description: string,
-    speaker: string,
-    audioUrl: string
-  ): Promise<boolean> => {
-    if (!supabase) {
-      console.error("Supabase client not initialized")
-      return false
-    }
-
-    try {
-      const cacheKey = `${newsId}_${speaker}_${hashString(title + description)}`
-
-      const { error } = await supabase
-        .from('news_audio_cache')
-        .upsert({
-          id: cacheKey,
-          news_id: newsId,
-          title,
-          description,
-          audio_url: audioUrl,
-          speaker,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'id'
-        })
-
-      if (error) {
-        console.error('Error storing audio in cache:', error)
-        return false
-      }
-
-      console.log('Audio stored in cache:', cacheKey)
-      return true
-    } catch (error) {
-      console.error('Error storing audio in cache:', error)
-      return false
-    }
-  }
-
-  // Helper function to create hash of string
-  const hashString = (str: string): string => {
-    let hash = 0
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
-      hash = hash & hash // Convert to 32bit integer
-    }
-    return Math.abs(hash).toString(16)
-  }
-
-  // Generate audio for current news item
-  const getNewsId = (news: HatenaNews, index: number) => news.id || `idx-${index}`;
-
-
+    generateAudioForNews(currentNews, newsId, selectedSpeaker)
+  }, [audioLoadingStates, audioUrls, currentIndex, generateAudioForNews, newsItems, selectedSpeaker, getNewsId])
 
   // Pre-generate audio for next items in background
   useEffect(() => {
@@ -409,100 +472,25 @@ export default function Page() {
 
     preloadIndices.forEach(index => {
       const news = newsItems[index]
-      const newsId = getNewsId(news, index);
+      const newsId = getNewsId(news, index)
 
       if (!audioUrls[newsId] && audioLoadingStates[newsId] !== 'loading') {
         console.log('Pre-generating audio for:', newsId)
         generateAudioForNews(news, newsId, selectedSpeaker)
       }
     })
-  }, [currentIndex, newsItems, selectedSpeaker, audioUrls, audioLoadingStates])
-
-  const generateAudioForNews = async (
-    news: HatenaNews,
-    newsId: string,
-    speaker: string
-  ) => {
-    setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'loading' }))
-
-    try {
-      // First, check cache
-      const cachedAudioUrl = await checkAudioCache(
-        newsId,
-        news.title,
-        news.description,
-        speaker
-      )
-
-      if (cachedAudioUrl) {
-        console.log('Using cached audio for', newsId)
-        setAudioUrls(prev => ({ ...prev, [newsId]: cachedAudioUrl }))
-        setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'ready' }))
-        return
-      }
-
-      // If not in cache, generate new audio
-      const response = await fetch("/api/pregenerate-news-audio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          newsId,
-          title: news.title,
-          description: news.description,
-          speaker
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to generate audio')
-      }
-
-      const data = await response.json()
-
-      console.log('Audio generated for', newsId, ':', data.audioUrl)
-
-      // Store in cache for future use
-      await storeAudioInCache(
-        newsId,
-        news.title,
-        news.description,
-        speaker,
-        data.audioUrl
-      )
-
-      setAudioUrls(prev => ({ ...prev, [newsId]: data.audioUrl }))
-      setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'ready' }))
-    } catch (error) {
-      console.error(`Error generating audio for ${newsId}:`, error)
-      setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'error' }))
-    }
-  }
-
-  useEffect(() => {
-    if (newsItems.length === 0 || !selectedSpeaker) return;
-
-    const currentNews = newsItems[currentIndex];
-    const newsId = getNewsId(currentNews, currentIndex);
-
-    if (audioUrls[newsId] || audioLoadingStates[newsId] === 'loading') {
-      console.log('Audio already exists or loading for:', newsId)
-      return
-    }
-
-    generateAudioForNews(currentNews, newsId, selectedSpeaker)
-  }, [audioLoadingStates, audioUrls, currentIndex, generateAudioForNews, newsItems, selectedSpeaker])
+  }, [currentIndex, newsItems, selectedSpeaker, audioUrls, audioLoadingStates, generateAudioForNews, getNewsId])
 
   // auto-play
-  const [isPlaying, setIsPlaying] = useState(false);
   const handleNext = () => {
     if (currentIndex < newsItems.length - 1) {
-      setIsPlaying(false); // stop old audio first
-      setCurrentIndex(prev => prev + 1);
-      setIsPlaying(true); // request autoplay for next
+      setIsPlaying(false)
+      setCurrentIndex(prev => prev + 1)
+      setIsPlaying(true)
     } else {
-      setIsPlaying(false);
+      setIsPlaying(false)
     }
-  };
+  }
 
   const handlePrev = () => {
     if (currentIndex > 0) {
@@ -512,13 +500,13 @@ export default function Page() {
   }
 
   useEffect(() => {
-    const newsId = newsItems[currentIndex]?.id;
-    if (!newsId) return;
+    const newsId = newsItems[currentIndex]?.id
+    if (!newsId) return
 
     if (audioUrls[newsId] && audioLoadingStates[newsId] === 'ready') {
-      setIsPlaying(true);
+      setIsPlaying(true)
     }
-  }, [currentIndex, audioUrls, audioLoadingStates, newsItems]);
+  }, [currentIndex, audioUrls, audioLoadingStates, newsItems])
 
   const calculateDuration = (title: string, description: string) => {
     const totalText = `${title}${description}`
@@ -544,7 +532,7 @@ export default function Page() {
   }
 
   const currentNews = newsItems[currentIndex]
-  const newsId = getNewsId(currentNews, currentIndex);
+  const newsId = getNewsId(currentNews, currentIndex)
   const audioUrl = audioUrls[newsId] || null
   const audioState = audioLoadingStates[newsId] || 'idle'
 

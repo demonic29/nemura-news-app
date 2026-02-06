@@ -3,7 +3,8 @@
 'use client'
 
 import { createContext, useContext, useState, ReactNode } from "react"
-import { Characters } from "@/app/_ai-character/config"
+// import { Characters } from "@/app/_ai-character/config"
+import { Characters } from "@/app/ai-character/config"
 
 export type VoiceItem = {
     title: string

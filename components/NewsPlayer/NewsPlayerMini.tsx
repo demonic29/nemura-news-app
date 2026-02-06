@@ -56,7 +56,7 @@ export default function NewsPlayerMini({ isOpen }: Props) {
       >
         {/* タイトル */}
         <div className="px-4 mb-2">
-          <NewsHeader title={currentItem.title} estimatedDuration={180} />
+          <NewsHeader title={currentItem.title} />
         </div>
 
         {/* シークバー */}
