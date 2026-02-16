@@ -1,20 +1,14 @@
-// voice-player
-
 'use client'
 
 import React, { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Wave from '@/assets/graphics/wave.svg'
 import waitVoice from '@/public/wait-voice.png'
-import waitBg from '@/public/wait-bg.png'
 
 // firebase
 import { auth, db } from "@/app/lib/firebase/firebase"
 import { doc, getDoc } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
-
-// supabase
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 // components
 import NavigationHeader from "@/components/NavigationHeader"
@@ -29,52 +23,17 @@ type HatenaNews = {
   description: string
   url?: string
   id: string
-  className?: string
 }
 
 type AudioLoadingState = {
   [newsId: string]: 'idle' | 'loading' | 'ready' | 'error'
 }
 
-// Supabase types
-type NewsAudioCache = {
-  id: string
-  news_id: string
-  title: string
-  description: string
-  audio_url: string
-  speaker: string
-  created_at: string
-  updated_at: string
-}
-
-
 const MAX_NEWS_ITEMS = 3
-
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-
-// Note: Initialize only on client side
-let supabase: SupabaseClient | null = null
-
-if (typeof window !== 'undefined' && supabaseUrl && supabaseAnonKey) {
-  supabase = createClient(supabaseUrl, supabaseAnonKey)
-}
-
-// Helper function to create hash of string (moved outside component)
-const hashString = (str: string): string => {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = ((hash << 5) - hash) + char
-    hash = hash & hash // Convert to 32bit integer
-  }
-  return Math.abs(hash).toString(16)
-}
 
 export default function Page() {
   const router = useRouter()
+
   const [newsItems, setNewsItems] = useState<HatenaNews[]>([])
   const [audioUrls, setAudioUrls] = useState<Record<string, string>>({})
   const [audioLoadingStates, setAudioLoadingStates] = useState<AudioLoadingState>({})
@@ -83,203 +42,14 @@ export default function Page() {
   const [error, setError] = useState("")
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null)
   const [selectedSpeaker, setSelectedSpeaker] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [autoPlay, setAutoPlay] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
 
-  // NEW: Fetch all cached audio data from Supabase
-  const fetchAllCachedAudio = async (): Promise<NewsAudioCache[]> => {
-    if (!supabase) {
-      console.error("Supabase client not initialized")
-      return []
-    }
+  const getNewsId = useCallback(
+    (news: HatenaNews, index: number) => news.id || `idx-${index}`,
+    []
+  )
 
-    try {
-      const { data, error } = await supabase
-        .from('news_audio_cache')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching cached audio:', error)
-        return []
-      }
-
-      console.log('Fetched cached audio items:', data?.length || 0)
-      return data || []
-    } catch (error) {
-      console.error('Error fetching all cached audio:', error)
-      return []
-    }
-  }
-
-  // NEW: Fetch cached audio by speaker
-  const fetchCachedAudioBySpeaker = async (speaker: string): Promise<NewsAudioCache[]> => {
-    if (!supabase) {
-      console.error("Supabase client not initialized")
-      return []
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('news_audio_cache')
-        .select('*')
-        .eq('speaker', speaker)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching cached audio by speaker:', error)
-        return []
-      }
-
-      console.log(`Fetched cached audio for speaker ${speaker}:`, data?.length || 0)
-      return data || []
-    } catch (error) {
-      console.error('Error fetching cached audio by speaker:', error)
-      return []
-    }
-  }
-
-  // NEW: Fetch cached audio by news ID
-  const fetchCachedAudioByNewsId = async (newsId: string): Promise<NewsAudioCache[]> => {
-    if (!supabase) {
-      console.error("Supabase client not initialized")
-      return []
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('news_audio_cache')
-        .select('*')
-        .eq('news_id', newsId)
-
-      if (error) {
-        console.error('Error fetching cached audio by news ID:', error)
-        return []
-      }
-
-      console.log(`Fetched cached audio for news ${newsId}:`, data?.length || 0)
-      return data || []
-    } catch (error) {
-      console.error('Error fetching cached audio by news ID:', error)
-      return []
-    }
-  }
-
-  // NEW: Delete old cache entries (optional - for cleanup)
-  const deleteOldCacheEntries = async (daysOld: number = 7): Promise<number> => {
-    if (!supabase) {
-      console.error("Supabase client not initialized")
-      return 0
-    }
-
-    try {
-      const cutoffDate = new Date()
-      cutoffDate.setDate(cutoffDate.getDate() - daysOld)
-
-      const { data, error } = await supabase
-        .from('news_audio_cache')
-        .delete()
-        .lt('created_at', cutoffDate.toISOString())
-        .select()
-
-      if (error) {
-        console.error('Error deleting old cache entries:', error)
-        return 0
-      }
-
-      console.log(`Deleted ${data?.length || 0} old cache entries`)
-      return data?.length || 0
-    } catch (error) {
-      console.error('Error deleting old cache entries:', error)
-      return 0
-    }
-  }
-
-  // Check cache in Supabase for existing audio
-  const checkAudioCache = useCallback(async (
-    newsId: string,
-    title: string,
-    description: string,
-    speaker: string
-  ): Promise<string | null> => {
-    if (!supabase) {
-      console.error("Supabase client not initialized")
-      return null
-    }
-
-    try {
-      // Create a unique cache key based on content and speaker
-      const cacheKey = `${newsId}_${speaker}_${hashString(title + description)}`
-
-      const { data, error } = await supabase
-        .from('news_audio_cache')
-        .select('audio_url')
-        .eq('id', cacheKey)
-        .single()
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // No rows returned - cache miss
-          console.log('Cache miss for:', cacheKey)
-          return null
-        }
-        console.error('Error checking cache:', error)
-        return null
-      }
-
-      console.log('Cache hit for:', cacheKey)
-      return data.audio_url
-    } catch (error) {
-      console.error('Error checking audio cache:', error)
-      return null
-    }
-  }, [])
-
-  // Store audio URL in Supabase cache
-  const storeAudioInCache = useCallback(async (
-    newsId: string,
-    title: string,
-    description: string,
-    speaker: string,
-    audioUrl: string
-  ): Promise<boolean> => {
-    if (!supabase) {
-      console.error("Supabase client not initialized")
-      return false
-    }
-
-    try {
-      const cacheKey = `${newsId}_${speaker}_${hashString(title + description)}`
-
-      const { error } = await supabase
-        .from('news_audio_cache')
-        .upsert({
-          id: cacheKey,
-          news_id: newsId,
-          title,
-          description,
-          audio_url: audioUrl,
-          speaker,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'id'
-        })
-
-      if (error) {
-        console.error('Error storing audio in cache:', error)
-        return false
-      }
-
-      console.log('Audio stored in cache:', cacheKey)
-      return true
-    } catch (error) {
-      console.error('Error storing audio in cache:', error)
-      return false
-    }
-  }, [])
-
-  // Generate audio for current news item
+  // 🔥 Generate Audio (API handles caching)
   const generateAudioForNews = useCallback(async (
     news: HatenaNews,
     newsId: string,
@@ -288,159 +58,96 @@ export default function Page() {
     setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'loading' }))
 
     try {
-      // First, check cache
-      const cachedAudioUrl = await checkAudioCache(
-        newsId,
-        news.title,
-        news.description,
-        speaker
-      )
+      const safeTitle = news.title?.trim() || "この記事にはタイトルがありません"
+      const safeDescription = news.description?.trim() || "詳細情報がありません"
 
-      if (cachedAudioUrl) {
-        console.log('Using cached audio for', newsId)
-        setAudioUrls(prev => ({ ...prev, [newsId]: cachedAudioUrl }))
-        setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'ready' }))
-        return
+      if (!safeTitle && !safeDescription) {
+        throw new Error("No valid content to generate audio")
       }
 
-      // If not in cache, generate new audio
       const response = await fetch("/api/pregenerate-news-audio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           newsId,
-          title: news.title,
-          description: news.description,
+          title: safeTitle,
+          description: safeDescription,
           speaker
         })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to generate audio')
+        throw new Error("Failed to generate audio")
       }
 
       const data = await response.json()
 
-      console.log('Audio generated for', newsId, ':', data.audioUrl)
-
-      // Store in cache for future use
-      await storeAudioInCache(
-        newsId,
-        news.title,
-        news.description,
-        speaker,
-        data.audioUrl
-      )
+      if (!data.audioUrl) {
+        throw new Error("No audio URL returned")
+      }
 
       setAudioUrls(prev => ({ ...prev, [newsId]: data.audioUrl }))
       setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'ready' }))
+
     } catch (error) {
-      console.error(`Error generating audio for ${newsId}:`, error)
+      console.error(`Audio generation error for ${newsId}:`, error)
       setAudioLoadingStates(prev => ({ ...prev, [newsId]: 'error' }))
     }
-  }, [checkAudioCache, storeAudioInCache])
+  }, [])
 
-  const getNewsId = useCallback((news: HatenaNews, index: number) => news.id || `idx-${index}`, [])
-
-  // Fetch user's voice preference from Firebase
+  // 🔥 Fetch user voice from Firebase
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUserId(user.uid)
+      if (!user) return
 
-        try {
-          const userDocRef = doc(db, "users", user.uid)
-          const userDoc = await getDoc(userDocRef)
+      try {
+        const userDocRef = doc(db, "users", user.uid)
+        const userDoc = await getDoc(userDocRef)
 
-          if (userDoc.exists()) {
-            const userData = userDoc.data()
-            const userVoiceId = userData.aiVoice || userData.voice || userData.selectedVoice
+        const userVoiceId =
+          userDoc.data()?.aiVoice ||
+          userDoc.data()?.voice ||
+          userDoc.data()?.selectedVoice
 
-            const matchedVoice = VOICES.find(voice => voice.id === userVoiceId)
+        const matchedVoice = VOICES.find(v => v.id === userVoiceId)
 
-            if (matchedVoice) {
-              setSelectedVoice(matchedVoice.id)
-              setSelectedSpeaker(matchedVoice.speaker)
-              console.log("Voice loaded from Firebase:", matchedVoice.label)
-            } else {
-              console.warn("No matching voice found, using default")
-              setSelectedVoice(VOICES[0].id)
-              setSelectedSpeaker(VOICES[0].speaker)
-            }
-          } else {
-            console.log("User document not found, using default voice")
-            setSelectedVoice(VOICES[0].id)
-            setSelectedSpeaker(VOICES[0].speaker)
-          }
-        } catch (err) {
-          console.error("Error fetching user voice preference:", err)
+        if (matchedVoice) {
+          setSelectedVoice(matchedVoice.id)
+          setSelectedSpeaker(matchedVoice.speaker)
+        } else {
           setSelectedVoice(VOICES[0].id)
           setSelectedSpeaker(VOICES[0].speaker)
         }
+      } catch (err) {
+        console.error("Voice fetch error:", err)
+        setSelectedVoice(VOICES[0].id)
+        setSelectedSpeaker(VOICES[0].speaker)
       }
     })
 
     return () => unsubscribe()
   }, [router])
 
-  // Fetch news
+  // 🔥 Fetch News
   useEffect(() => {
     const fetchNews = async () => {
       try {
         setLoading(true)
         setError("")
 
-        const mockNews: HatenaNews[] = [
-          {
-            id: "1",
-            title: "最新テクノロジーが世界を変える",
-            description: "AI技術の発展により、日常生活が大きく変化しています。",
-            url: "#"
-          },
-          {
-            id: "2",
-            title: "経済ニュース速報",
-            description: "本日の株式市場は好調なスタートを切りました。",
-            url: "#"
-          },
-          {
-            id: "3",
-            title: "気象情報",
-            description: "週末は全国的に晴れる見込みです。",
-            url: "#"
-          },
-          {
-            id: "4",
-            title: "スポーツニュース",
-            description: "今シーズンの注目選手について解説します。",
-            url: "#"
-          },
-          {
-            id: "5",
-            title: "文化・芸術情報",
-            description: "新しい美術展が開催されます。",
-            url: "#"
-          }
-        ]
+        const response = await fetch("/api/hatena?type=popular")
 
-        let newsData = mockNews
+        if (!response.ok) throw new Error()
 
-        try {
-          const response = await fetch("/api/hatena?type=popular")
-          if (response.ok) {
-            const fetchedNews = await response.json()
-            newsData = Array.isArray(fetchedNews)
-              ? fetchedNews.slice(0, MAX_NEWS_ITEMS)
-              : mockNews
-          }
-        } catch (e) {
-          console.log("Using mock data:", e)
-        }
+        const data = await response.json()
 
-        setNewsItems(newsData.slice(0, MAX_NEWS_ITEMS))
+        const newsData = Array.isArray(data)
+          ? data.slice(0, MAX_NEWS_ITEMS)
+          : []
 
+        setNewsItems(newsData)
       } catch (e) {
-        console.error("Error fetching news:", e)
+        console.error("News fetch error:", e)
         setError("ニュースの取得に失敗しました")
       } finally {
         setLoading(false)
@@ -450,58 +157,52 @@ export default function Page() {
     fetchNews()
   }, [])
 
-  // Generate audio for current item
+  // 🔥 Generate current item audio
   useEffect(() => {
-    if (newsItems.length === 0 || !selectedSpeaker) return
+    if (!selectedSpeaker || newsItems.length === 0) return
 
     const currentNews = newsItems[currentIndex]
     const newsId = getNewsId(currentNews, currentIndex)
 
-    if (audioUrls[newsId] || audioLoadingStates[newsId] === 'loading') {
-      console.log('Audio already exists or loading for:', newsId)
-      return
-    }
+    if (audioUrls[newsId] || audioLoadingStates[newsId] === 'loading') return
 
     generateAudioForNews(currentNews, newsId, selectedSpeaker)
-  }, [audioLoadingStates, audioUrls, currentIndex, generateAudioForNews, newsItems, selectedSpeaker, getNewsId])
+  }, [
+    currentIndex,
+    newsItems,
+    selectedSpeaker,
+    audioUrls,
+    audioLoadingStates,
+    generateAudioForNews,
+    getNewsId
+  ])
 
-  // Pre-generate audio for next items in background
+  // 🔥 Preload next items
   useEffect(() => {
-    if (newsItems.length === 0 || !selectedSpeaker) return
+    if (!selectedSpeaker || newsItems.length === 0) return
 
-    const preloadIndices = [currentIndex + 1, currentIndex + 2].filter(
-      i => i < newsItems.length
-    )
+    const preload = [currentIndex + 1, currentIndex + 2]
+      .filter(i => i < newsItems.length)
 
-    preloadIndices.forEach(index => {
+    preload.forEach(index => {
       const news = newsItems[index]
       const newsId = getNewsId(news, index)
 
       if (!audioUrls[newsId] && audioLoadingStates[newsId] !== 'loading') {
-        console.log('Pre-generating audio for:', newsId)
         generateAudioForNews(news, newsId, selectedSpeaker)
       }
     })
-  }, [currentIndex, newsItems, selectedSpeaker, audioUrls, audioLoadingStates, generateAudioForNews, getNewsId])
+  }, [
+    currentIndex,
+    newsItems,
+    selectedSpeaker,
+    audioUrls,
+    audioLoadingStates,
+    generateAudioForNews,
+    getNewsId
+  ])
 
-  // auto-play
-  const handleNext = () => {
-    if (currentIndex < newsItems.length - 1) {
-      setIsPlaying(false)
-      setCurrentIndex(prev => prev + 1)
-      setIsPlaying(true)
-    } else {
-      setIsPlaying(false)
-    }
-  }
-
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      console.log('Moving to previous:', currentIndex - 1)
-      setCurrentIndex(i => i - 1)
-    }
-  }
-
+  // 🔥 Auto play when ready
   useEffect(() => {
     const newsId = newsItems[currentIndex]?.id
     if (!newsId) return
@@ -511,135 +212,79 @@ export default function Page() {
     }
   }, [currentIndex, audioUrls, audioLoadingStates, newsItems])
 
+  const handleNext = () => {
+    if (currentIndex < newsItems.length - 1) {
+      setCurrentIndex(i => i + 1)
+    }
+  }
+
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(i => i - 1)
+    }
+  }
+
   const calculateDuration = (title: string, description: string) => {
-    const totalText = `${title}${description}`
-    const wordCount = totalText.length / 3
-    const minutes = wordCount / 110
-    return Math.ceil(minutes * 60)
+    const total = `${title}${description}`
+    return Math.ceil((total.length / 3 / 110) * 60)
   }
 
-  if (loading) {
-    return <FullScreen message="ニュースを読み込み中..." />
-  }
-
-  if (error) {
-    return <FullScreen message={error} error />
-  }
-
-  if (newsItems.length === 0) {
+  if (loading) return <FullScreen message="ニュースを読み込み中..." />
+  if (error) return <FullScreen message={error} error />
+  if (!selectedSpeaker) return <FullScreen message="音声設定を読み込み中..." />
+  if (newsItems.length === 0)
     return <FullScreen message="ニュースが見つかりませんでした" />
-  }
-
-  if (!selectedVoice || !selectedSpeaker) {
-    return <FullScreen message="音声設定を読み込み中..." />
-  }
 
   const currentNews = newsItems[currentIndex]
   const newsId = getNewsId(currentNews, currentIndex)
   const audioUrl = audioUrls[newsId] || null
   const audioState = audioLoadingStates[newsId] || 'idle'
 
-  console.log('Rendering - Current:', currentIndex, 'NewsID:', newsId, 'AudioURL:', audioUrl)
-
-  // Show loading screen while generating audio for current item
-  if (audioState === 'loading' && !audioUrl) {
-    return (
-      <main
-        className={`h-screen w-full relative flex flex-col overflow-hidden`}
-        style={{
-          backgroundImage: "url('/wait-bg.png')",
-          backgroundSize: 'contain'
-        }}
-
-      >
-        <NavigationHeader className="px-6 mt-8" />
-
-        <div className="mt-[40%] flex items-center justify-center">
-          <div className="text-center">
-            <div className="mb-4">
-              <Image
-                src={waitVoice}
-                width={200}
-                height={200}
-                alt="wait-voice-image"
-                className="mx-auto mb-4 animate-pulse"
-                loading="lazy"
-              />
-              {/* <LoadingSpinner /> */}
-            </div>
-            <p className="text-2xl font-bold text-white-soft">音声を準備中です</p>
-            <p className="text-white-soft text-base">しばらくお待ちください</p>
-          </div>
-        </div>
-
-        <div className="absolute bottom-0 left-0 w-full z-0 pointer-events-none">
-          <Wave className="w-full h-auto" />
-        </div>
-      </main>
-    )
-  }
-
-  // Show error state
-  if (audioState === 'error') {
-    return (
-      <main
-        className="h-screen w-full relative flex flex-col overflow-hidden pt-[54px]"
-        style={{ backgroundImage: 'linear-gradient(to bottom, #00040a, #003569, #004E9A)' }}
-      >
-        <NavigationHeader className="px-6" />
-
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-red-300 text-xl mb-4">音声の生成に失敗しました</p>
-            <button
-              onClick={() => generateAudioForNews(currentNews, newsId, selectedSpeaker)}
-              className="px-6 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors"
-            >
-              再試行
-            </button>
-          </div>
-        </div>
-
-        <div className="absolute bottom-0 left-0 w-full z-0 pointer-events-none">
-          <Wave className="w-full h-auto" />
-        </div>
-      </main>
-    )
-  }
-
   return (
-    <main
-      className="h-screen w-full relative flex flex-col overflow-hidden pt-[54px]"
-      style={{ backgroundImage: 'linear-gradient(to bottom, #00040a, #003569, #004E9A)' }}
-    >
+    <main className="h-[100dvh] overflow-hidden flex flex-col pt-[40px] bg-gradient-to-b from-[#00040a] via-[#003569] to-[#004E9A]">
       <NavigationHeader />
 
-      <div className="flex-1 relative z-10 pb-[36px]">
-        <NewsPlayer
-          key={newsId}
-          showNemura
-          audioUrl={audioUrl}
-          item={{
-            title: currentNews.title,
-            body: currentNews.description,
-            estimatedDuration: calculateDuration(
-              currentNews.title,
-              currentNews.description
-            ),
-            newsId: newsId
-          }}
-          onNext={handleNext}
-          onPrev={handlePrev}
-          hasNext={currentIndex < newsItems.length - 1}
-          hasPrev={currentIndex > 0}
-          isPlaying={isPlaying}
-          setIsPlaying={setIsPlaying}
-        />
+      <div className="flex-1 z-10">
+        {
+          audioState === 'loading' ? (
+            <div className="flex flex-col items-center justify-center mt-40">
+              <Image
+                src={waitVoice}
+                alt="音声生成中"
+                width={200}
+                height={200}
+                className="animate-pulse"
+                priority
+              />
+              <p className="text-white mt-8">音声を生成中...</p>
+            </div>
+          ) : (
+            <NewsPlayer
+              key={newsId}
+              showNemura
+              audioUrl={audioUrl}
+              item={{
+                title: currentNews.title,
+                body: currentNews.description,
+                estimatedDuration: calculateDuration(
+                  currentNews.title,
+                  currentNews.description
+                ),
+                newsId
+              }}
+              onNext={handleNext}
+              onPrev={handlePrev}
+              hasNext={currentIndex < newsItems.length - 1}
+              hasPrev={currentIndex > 0}
+              isPlaying={isPlaying}
+              setIsPlaying={setIsPlaying}
+            />
+          )
+        }
+
       </div>
 
-      <div className="absolute bottom-0 left-0 w-full z-0 pointer-events-none">
-        <Wave className="w-full h-auto" />
-      </div>
+      <Wave className="absolute bottom-0 w-full pointer-events-none" />
     </main>
   )
 }
@@ -649,13 +294,5 @@ function FullScreen({ message, error }: { message: string; error?: boolean }) {
     <main className="h-screen flex items-center justify-center text-xl text-white bg-gradient-to-b from-[#00040a] via-[#003569] to-[#004E9A]">
       <span className={error ? "text-red-300" : ""}>{message}</span>
     </main>
-  )
-}
-
-function LoadingSpinner() {
-  return (
-    <div className="inline-block">
-      <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-    </div>
   )
 }

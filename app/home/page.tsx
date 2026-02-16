@@ -59,8 +59,6 @@ export default function HomePage() {
       const audio = new Audio(audioUrl);
       audio.volume = 1;
       audio.play();
-
-      console.log("再生中キャラクター:", speaker);
     } catch (e) {
       console.error(e);
     }
@@ -69,7 +67,7 @@ export default function HomePage() {
   return (
     <div className="bg-background-light h-screen w-full px-0 relative flex flex-col overflow-scroll no-scrollbar">
       <BottomNavigationBar />
-      <div className="shrink-0 py-6">
+      <div className="shrink-0">
         <NavigationHeader title="今日の Nemura" showBack={false} />
       </div>
       {error && <p className="text-red-400">{error}</p>}
@@ -109,7 +107,7 @@ export default function HomePage() {
                   item={{
                     title: news.title,
                     imageUrl: news["hatena:imageurl"],
-                    subject: Array.isArray(news["dc:subject"]) ? news["dc:subject"][0] : news["dc:subject"] || "未分類",
+                    subject: Array.isArray(news["dc:subject"]) ? news["dc:subject"][1] : news["dc:subject"] || "未分類",
                     body: news.body,
                     link: news.link
                   }}
@@ -140,7 +138,7 @@ export default function HomePage() {
                   title: news.title,
                   imageUrl: news["hatena:imageurl"],
                   subject: Array.isArray(news["dc:subject"])
-                    ? news["dc:subject"][0]
+                    ? news["dc:subject"][1]
                     : news["dc:subject"] || "未分類",
                   body: news.body,
                   link: news.link

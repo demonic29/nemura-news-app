@@ -103,19 +103,6 @@ export default function NewsPlayer({
     }
 
     // 🎵 Track-end sleep timer
-    if (isPlaying && sleepMinutes === 'track-end') {
-      const handleEnded = () => {
-        setIsPlaying(false)
-        router.push('/good-night')
-      }
-
-      audio.addEventListener('ended', handleEnded)
-
-      return () => {
-        audio.removeEventListener('ended', handleEnded)
-      }
-    }
-
     return () => {
       if (sleepTimer) clearTimeout(sleepTimer)
     }
@@ -133,8 +120,17 @@ export default function NewsPlayer({
         crossOrigin="anonymous"
         onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
         onEnded={() => {
-          if (hasNext) {
-            onNext?.(); // Parent changes index, remounts this component
+          if (sleepMinutes === 'track-end') {
+            if (hasNext) {
+              onNext?.();
+            } else {
+              setIsPlaying(false);
+              router.push('/good-night');
+            }
+          } else {
+            if (hasNext) {
+              onNext?.();
+            }
           }
         }}
       />
@@ -160,7 +156,7 @@ export default function NewsPlayer({
       <div className="flex-1 max-h-[6lh] overflow-y-auto">
         {
           audioUrl ? (
-            <NewsBody body={item.body || ''} />
+            <NewsBody body={item.body || '詳細はありません'} />
           ) :
             <div className="text-white/60 text-center">
               音声を準備中...
@@ -178,7 +174,7 @@ export default function NewsPlayer({
           onRewind={() => { if (audioRef.current) audioRef.current.currentTime -= 10 }}
           onForward={() => { if (audioRef.current) audioRef.current.currentTime += 10 }}
         />
-        <div className="pt-[36px]">
+        <div className="pt-[16px]">
           <ControlBar
             playbackSpeed={playbackSpeed}
             setPlaybackSpeed={setPlaybackSpeed}

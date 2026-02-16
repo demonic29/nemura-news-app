@@ -109,14 +109,18 @@ export default function PlaylistPage() {
             <div className="relative w-full flex flex-col overflow-hidden">
                 <div className="h-[54px] shrink-0" />
                 <BottomNavigationBar />
-                    <NavigationHeader title="選択されたプレイリスト" />
+                    <NavigationHeader title="プレイリスト" />
 
                 <div className="flex-1 flex flex-col px-6 mt-6 z-20 overflow-y-auto pb-32">
                     <div className="space-y-4">
                         {items.map((item) => (
                             <NewsCard
                                 key={item.id}
-                                item={item}
+                                item={{
+                                    title: item.title,
+                                    imageUrl: item.imageUrl,
+                                    subject: item.category,
+                                }}
                                 onPlayClick={() => handlePlay(item)}
                                 onToggleAdd={(added) => {
                                     if (!added) handleRemove(item.id)

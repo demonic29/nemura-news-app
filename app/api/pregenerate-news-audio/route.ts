@@ -1,3 +1,5 @@
+// api / pregenerate-news-audio / route.ts
+
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/app/lib/supabase/supabase"
 

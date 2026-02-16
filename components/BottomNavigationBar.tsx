@@ -15,7 +15,7 @@ export default function BottomNavigationBar() {
 
     const navItems = [
         { label: 'Home', icon: HomeIcon, path: '/home' },
-        { label: 'Listen', icon: SpeechToTextIcon, path: '/voice-player', small: true },
+        { label: 'Radio', icon: SpeechToTextIcon, path: '/voice-player', small: true },
         { label: 'Playlist', icon: PlayListAddCheckIcon, path: '/playlist' },
     ]
 

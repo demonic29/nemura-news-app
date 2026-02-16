@@ -10,7 +10,6 @@ body {
   font-family:"Zen Maru Gothic", sans-serif;
 }
 
-
 .fade-enter {
   @apply opacity-0;
 }
