@@ -28,18 +28,17 @@ export default function LatestPage() {
 
   // 音声再生
   const [character, setCharacter] = useState<string>('');
-  console.log(character)
 
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
 
-  // const filteredNews = selectedTopic
-  //   ? popularNews.filter((item) => {
-  //     const subject = Array.isArray(item["dc:subject"])
-  //       ? item["dc:subject"][1]
-  //       : item["dc:subject"];
-  //     return subject === selectedTopic;
-  //   })
-  //   : popularNews;
+  const filteredNews = selectedTopic
+    ? popularNews.filter((item) => {
+      const subject = Array.isArray(item["dc:subject"])
+        ? item["dc:subject"][1]
+        : item["dc:subject"];
+      return subject === selectedTopic;
+    })
+    : popularNews;
 
   // Get unique topics
   const uniqueTopics = Array.from(
