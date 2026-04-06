@@ -1,11 +1,13 @@
 'use client'
 
-import { AddCircleIcon, PlayCircleIcon, RemoveCircleIcon } from '@/assets/icons'
+import { AddCircleIcon, RemoveCircleIcon } from '@/assets/icons'
 import React, { useState, useEffect } from 'react'
 import SafeImage from './SafeImage'
-import { auth, db } from '@/app/lib/firebase/firebase'
-import { doc, onSnapshot, updateDoc, arrayRemove } from 'firebase/firestore'
+import { auth, db } from '@/app/lib/config/firebase'
+import { User } from 'firebase/auth'
+import { arrayRemove, arrayUnion, doc, onSnapshot, updateDoc } from 'firebase/firestore'
 import noImage from '@/public/no-image.png'
+import { HatenaNewsItem, getHatenaNewsSubject } from '@/app/lib/news'
 
 import {
     Modal,
@@ -13,7 +15,6 @@ import {
     ModalHeader,
     ModalBody,
     ModalFooter,
-    Button,
     useDisclosure,
 } from "@nextui-org/react";
 import Link from 'next/link'
@@ -27,12 +28,19 @@ interface PlaylistItem {
     addedAt: any
 }
 
-export default function LatestNewsCard({ i, playAudio, index, id }: any) {
+type LatestNewsCardProps = {
+    detailBasePath?: string
+    item: HatenaNewsItem
+}
+
+export default function LatestNewsCard({
+    detailBasePath = "/latest",
+    item,
+}: LatestNewsCardProps) {
 
     const { isOpen, onOpen, onOpenChange } = useDisclosure();
-    const [isAdding, setIsAdding] = useState(false);
     const [playlist, setPlaylist] = useState<PlaylistItem[]>([]);
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<User | null>(null);
 
     // Get current user
     useEffect(() => {
@@ -65,32 +73,28 @@ export default function LatestNewsCard({ i, playAudio, index, id }: any) {
             return;
         }
 
-        setIsAdding(true);
         try {
             const newsItem = {
                 id: Date.now().toString(),
-                title: i.title,
-                imageUrl: i["hatena:imageurl"] || noImage.src,
-                category: Array.isArray(i["dc:subject"]) ? i["dc:subject"][1] : i["dc:subject"],
-                link: i.link,
+                title: item.title,
+                imageUrl: item["hatena:imageurl"] || noImage.src,
+                category: getHatenaNewsSubject(item),
+                link: item.link ?? "",
                 addedAt: new Date().toISOString(),
             };
 
             const userDocRef = doc(db, "users", user.uid);
             await updateDoc(userDocRef, {
-                playlist: [...playlist, newsItem],
+                playlist: arrayUnion(newsItem),
             });
 
             console.log('Document added to user playlist');
 
             // Open modal after successful save
             onOpen();
-            setIsAdding(true);
         } catch (error) {
             console.error('Error adding document: ', error);
             alert('エラーが発生しました');
-        } finally {
-            setIsAdding(true);
         }
     };
 
@@ -103,9 +107,8 @@ export default function LatestNewsCard({ i, playAudio, index, id }: any) {
             if (itemToRemove) {
                 const userDocRef = doc(db, "users", user.uid);
                 await updateDoc(userDocRef, {
-                    playlist: playlist.filter((item) => item.id !== itemId),
+                    playlist: arrayRemove(itemToRemove),
                 });
-                setIsAdding(false);
                 console.log('Item removed from user playlist');
             }
         } catch (error) {
@@ -117,13 +120,12 @@ export default function LatestNewsCard({ i, playAudio, index, id }: any) {
     return (
         <>
             <div
-                key={index}
                 className="flex space-x-3 bg-[#3A86FF]/10 rounded-xl p-2 relative"
             >
                 <div className="w-20 h-20 relative flex-shrink-0">
                     <SafeImage
-                        src={i["hatena:imageurl"]}
-                        alt={i.title}
+                        src={item["hatena:imageurl"]}
+                        alt={item.title}
                         fill
                         sizes="80px"
                         className="object-cover rounded-lg"
@@ -131,9 +133,9 @@ export default function LatestNewsCard({ i, playAudio, index, id }: any) {
                 </div>
 
                 <div className="flex-grow flex flex-col">
-                    <Link href={`/latest/${encodeURIComponent(i.title)}`}>
+                    <Link href={`${detailBasePath}/${encodeURIComponent(item.title)}`}>
                         <h3 className="normal font-semibold text-gray-200 line-clamp-3">
-                            {i.title}
+                            {item.title}
                         </h3>
                     </Link>
 
@@ -141,9 +143,7 @@ export default function LatestNewsCard({ i, playAudio, index, id }: any) {
                         <div className="flex items-center space-x-2">
                             <span className="text-blue-400">🌐</span>
                             <span>
-                                {Array.isArray(i["dc:subject"])
-                                    ? i["dc:subject"][1]
-                                    : i["dc:subject"]}
+                                {getHatenaNewsSubject(item)}
                             </span>
                         </div>
                     </div>
@@ -152,10 +152,10 @@ export default function LatestNewsCard({ i, playAudio, index, id }: any) {
                 <div className="absolute bottom-2  right-2 flex items-center space-x-2">
                     <button
                         onClick={handleAddClick}
-                        disabled={isAdding}
+                        disabled={playlist.some((playlistItem) => playlistItem.title === item.title)}
                     >
                         {
-                            isAdding ? (
+                            playlist.some((playlistItem) => playlistItem.title === item.title) ? (
                                 <RemoveCircleIcon
                                     className={`w-6 h-6 cursor-pointer text-gray-400`}
                                 />
@@ -164,7 +164,7 @@ export default function LatestNewsCard({ i, playAudio, index, id }: any) {
                             />}
                     </button>
 
-                    {/* <button onClick={() => playAudio(i.title, user)}>
+                    {/* <button onClick={() => playAudio(item.title, user)}>
                         <PlayCircleIcon className="w-6 h-6 text-gray-400 cursor-pointer" />
                     </button> */}
                 </div>

@@ -1,39 +1,43 @@
 import axios from "axios";
 
-export const playAudio = async (text: string, speaker: string) => {
-    try {
-        const responseAudio = await axios.post("/api/audio", {
-            text,
-            speaker,
-        });
-
-        const base64Audio = responseAudio?.data?.response;
-
-        // Convert base64 → Blob (browser-safe)
-        const binary = atob(base64Audio);
-        const bytes = new Uint8Array(binary.length);
-
-        for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i);
-        }
-
-        const audioBlob = new Blob([bytes], { type: "audio/wav" });
-        const audioUrl = URL.createObjectURL(audioBlob);
-
-        const audio = new Audio(audioUrl);
-        audio.volume = 1;
-        await audio.play();
-    } catch (e) {
-        console.error("playAudio error:", e);
-    }
+type AudioRouteResponse = {
+  response?: string;
 };
 
+function decodeBase64Audio(base64Audio: string): Uint8Array {
+  const binary = atob(base64Audio);
+  const bytes = new Uint8Array(binary.length);
 
-// lib/ audio.ts
-export const VOICES = [
-    { id: "electronic", label: "電子的な声", speaker: "54", word: "電子的な声です" },
-    { id: "cool", label: "冷静な声", speaker: "47", word: "冷静な声" },
-    { id: "child", label: "子どもの声", speaker: "42", word: "子どもの声" },
-    { id: "low", label: "低音な声", speaker: "13", word: "低音な声" },
-    { id: "warm", label: "あたたかい声", speaker: "24", word: "あたたかい声" },
-];
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+}
+
+export async function playAudio(text: string, speaker: string): Promise<void> {
+  const { data } = await axios.post<AudioRouteResponse>("/api/audio", {
+    text,
+    speaker,
+  });
+
+  if (!data.response) {
+    throw new Error("No audio data was returned from /api/audio.");
+  }
+
+  const audioBytes = decodeBase64Audio(data.response);
+  const audioBuffer = new ArrayBuffer(audioBytes.byteLength);
+  new Uint8Array(audioBuffer).set(audioBytes);
+
+  const audioBlob = new Blob([audioBuffer], { type: "audio/wav" });
+  const audioUrl = URL.createObjectURL(audioBlob);
+  const audio = new Audio(audioUrl);
+
+  const revokeObjectUrl = () => URL.revokeObjectURL(audioUrl);
+
+  audio.addEventListener("ended", revokeObjectUrl, { once: true });
+  audio.addEventListener("error", revokeObjectUrl, { once: true });
+
+  audio.volume = 1;
+  await audio.play();
+}

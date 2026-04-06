@@ -9,7 +9,7 @@ module.exports = {
   theme: {
     extend: {
       dropShadow: {
-        'white-glow': '0 0 15px rgba(255, 255, 255, 0.3)',
+        'white-glow': '0 0 10px rgba(255, 255, 255, 0.3)',
         'white-glow-str': '0 0 15px rgba(255, 255, 255, 1)',
       },
       colors: {

@@ -1,6 +1,4 @@
-import HeaderNav from '@/components/HeaderNav'
 import React from 'react'
-import HomeHeader from './HomeHeader'
 
 export default function HomeLayout({ children } : { children: React.ReactNode }) {
     return (

@@ -25,16 +25,17 @@
     "baseUrl": "",
     "paths": {
       "@/*": [
+        "./app/*",
         "./*"
       ],
       "@assets/*": [
-        "assets/*"
+        "app/assets/*"
       ],
       "@icons": [
-        "assets/icons/index"
+        "app/assets/icons/index"
       ],
       "@icons/*": [
-        "assets/icons/*"
+        "app/assets/icons/*"
       ]
     },
     "types": [

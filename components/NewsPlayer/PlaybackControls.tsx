@@ -27,15 +27,15 @@ export default function PlaybackControls({
   onPrev
 }: PlaybackControlsProps) {
   return (
-    <div className="w-full flex flex-col items-center px-8">
-      <div className="flex items-center justify-between w-full">
+    <div className="flex w-full flex-col items-center px-4 sm:px-6">
+      <div className="flex w-full items-center justify-between gap-3">
         
         {/* 10秒戻る */}
         <button 
           onClick={onRewind}
           className="text-white-soft opacity-80 hover:opacity-100 transition-all active:scale-90"
         >
-          <Replay10Icon className="scale-[1.3]" />
+          <Replay10Icon className="scale-[1.1] sm:scale-[1.3]" />
         </button>
 
         {/* 前へ */}
@@ -43,19 +43,19 @@ export default function PlaybackControls({
           onClick={onPrev}
           className="text-white-soft opacity-90 hover:opacity-100 transition-all active:scale-90 rotate-180"
         >
-          <SkipNextIcon className="scale-[2.0]" />
+          <SkipNextIcon className="scale-[1.5] sm:scale-[2.0]" />
         </button>
 
         {/* 再生・一時停止 */}
         <button 
-          className="relative flex items-center justify-center w-24 h-24 transition-all active:scale-95"
+          className="relative h-24 w-24 items-center justify-center transition-all active:scale-95"
           onClick={onToggle}
         >
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 pointer-events-none">
             {isPlaying ? (
-              <PauseVoiceRing className="w-full h-full" />
+              <PauseVoiceRing className="h-24 w-24" />
             ) : (
-              <PlayVoiceRing className="w-full h-full" />
+              <PlayVoiceRing className="h-24 w-24" />
             )}
           </div>
         </button>
@@ -65,7 +65,7 @@ export default function PlaybackControls({
           onClick={onNext}
           className="text-white-soft opacity-90 hover:opacity-100 transition-all active:scale-90"
         >
-          <SkipNextIcon className="scale-[2.0]" />
+          <SkipNextIcon className="scale-[1.5] sm:scale-[2.0]" />
         </button>
 
         {/* 10秒進む */}
@@ -73,7 +73,7 @@ export default function PlaybackControls({
           onClick={onForward}
           className="text-white-soft opacity-80 hover:opacity-100 transition-all active:scale-90"
         >
-          <Forward10Icon className="scale-[1.3]" />
+          <Forward10Icon className="scale-[1.1] sm:scale-[1.3]" />
         </button>
       </div>
     </div>

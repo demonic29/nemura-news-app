@@ -4,26 +4,19 @@ import {
   ChevronRightIcon,
 } from "@icons/index";
 import { useEffect, useState } from "react";
-import axios from "axios";
 import Link from "next/link";
 import SafeImage from "@/components/SafeImage";
 import NavigationHeader from "@/components/NavigationHeader";
-import VoiceNewsCard, { VoiceItem } from "@/components/NewsCard";
+import VoiceNewsCard from "@/components/NewsCard";
 import VerticalNewsCard from "@/components/VerticalNewsCard";
 import BottomNavigationBar from "@/components/BottomNavigationBar";
 import { Characters } from "@/app/ai-character/config"; // キャラクター情報をインポート
-
-type HatenaItem = {
-  title: string;
-  link: string;
-  "hatena:imageurl": string;
-  "dc:subject"?: string | string[];
-  body?: string
-};
+import { playAudio } from "@/app/lib/audio";
+import { HatenaNewsItem, getHatenaNewsSubject } from "@/app/lib/news";
 
 export default function HomePage() {
-  const [popularNews, setpopularNews] = useState<HatenaItem[]>([]);
-  const [newTopics, setnewTopics] = useState<HatenaItem[]>([]);
+  const [popularNews, setPopularNews] = useState<HatenaNewsItem[]>([]);
+  const [newTopics, setNewTopics] = useState<HatenaNewsItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,7 +24,7 @@ export default function HomePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.error) setError(data.error);
-        else setnewTopics(data);
+        else setNewTopics(data);
       })
       .catch(() => setError("Failed to load data"));
   }, []);
@@ -41,115 +34,100 @@ export default function HomePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.error) setError(data.error);
-        else setpopularNews(data);
+        else setPopularNews(data);
       })
       .catch(() => setError("Failed to load data"));
   }, []);
 
-  // playAudio 関数
-  const playAudio = async (text: string, speaker: string) => {
-    try {
-      const res = await axios.post("/api/audio", { text, speaker });
-      const base64Audio = res?.data?.response;
-      if (!base64Audio) return;
-
-      const byteArray = Buffer.from(base64Audio, "base64");
-      const audioBlob = new Blob([byteArray], { type: "audio/x-wav" });
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audio.volume = 1;
-      audio.play();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   return (
-    <div className="bg-background-light h-screen w-full px-0 relative flex flex-col overflow-scroll no-scrollbar">
+    <main className="relative flex min-h-[100dvh] w-full flex-col overflow-y-auto bg-background-light no-scrollbar">
+
+      {/* bottom nav-bar */}
       <BottomNavigationBar />
-      <div className="shrink-0">
-        <NavigationHeader title="今日の Nemura" showBack={false} />
-      </div>
-      {error && <p className="text-red-400">{error}</p>}
 
-      {/* graphic */}
-      <div className="flex justify-center my-4">
-        <div className="relative w-[398px] h-[132px] md:w-48 md:h-48">
-          <SafeImage
-            src="/graphic-nemura.png"
-            alt="Description"
-            fill
-            sizes="(max-width: 740px) 100vw"
-            className="object-contain rounded-lg"
+      <div className="mx-auto flex w-full max-w-[30rem] flex-1 flex-col pb-28 pt-2">
 
-          />
-        </div>
-      </div>
-
-      <div className="">
-        {/* Trending News */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-5">
-            <div>
-              <h2 className="title font-bold text-white-soft">おすすめ</h2>
-              <p className="desc">選択されたトピックに基づくおすすめ</p>
-            </div>
-            <Link href="/topic" className="flex items-center pt-8">
-              <p className="text-[#3A86FF]">すべて見る</p>
-              <ChevronRightIcon className="scale-[0.8] text-[#3A86FF] cursor-pointer" />
-            </Link>
+        {/* home nav-bar */}
+        <div>
+          <div className="shrink-0">
+            <NavigationHeader title="今日の Nemura" showBack={false} className="px-0" />
           </div>
 
-          <div className="flex space-x-4 overflow-x-auto">
-            {newTopics.slice(0, 5).map((news, idx) => (
-              <div key={idx} className="flex-shrink-0">
-                <VerticalNewsCard
+          <div className="mt-4 flex justify-center">
+            <div className="relative aspect-[3/1] w-full max-w-[25rem]">
+              <SafeImage
+                src="/graphic-nemura.png"
+                alt="Nemura graphic"
+                fill
+                sizes="(max-width: 640px) 92vw, 25rem"
+                className="object-contain"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* content */}
+        <div className="mt-6">
+
+          {/* pickup-section */}
+          <section className="mb-8">
+            <div className="mb-5 flex items-end justify-between gap-3">
+              <div>
+                <h2 className="title mb-1 text-white-soft">おすすめ</h2>
+                <p className="desc">選択されたトピック</p>
+              </div>
+              <Link href="/topic" className="flex items-center gap-1 self-center text-[#3A86FF]">
+                <p>すべて見る</p>
+                <ChevronRightIcon className="scale-[0.8] cursor-pointer text-[#3A86FF]" />
+              </Link>
+            </div>
+
+            <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 no-scrollbar sm:-mx-6 sm:px-6">
+              {newTopics.slice(0, 5).map((news, idx) => (
+                <div key={idx} className="flex-shrink-0">
+                  <VerticalNewsCard
+                    item={{
+                      title: news.title,
+                      imageUrl: news["hatena:imageurl"],
+                      subject: getHatenaNewsSubject(news),
+                      body: news.body,
+                      link: news.link
+                    }}
+                    onPlayClick={() => playAudio(news.title, Characters[18].value)}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* latest-news-section */}
+          <section className="flex flex-col">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="title">最新ニュース</h2>
+              <Link href="/latest" className="flex items-center gap-1 text-[#3A86FF]">
+                <p>すべて見る</p>
+                <ChevronRightIcon className="scale-[0.8] cursor-pointer text-[#3A86FF]" />
+              </Link>
+            </div>
+
+            <div className="space-y-3 sm:space-y-4">
+              {popularNews.slice(0, 10).map((news) => (
+                <VoiceNewsCard
+                  key={news.title}
                   item={{
                     title: news.title,
                     imageUrl: news["hatena:imageurl"],
-                    subject: Array.isArray(news["dc:subject"]) ? news["dc:subject"][1] : news["dc:subject"] || "未分類",
+                    subject: getHatenaNewsSubject(news),
                     body: news.body,
                     link: news.link
                   }}
-                  onPlayClick={() => playAudio(news.title, Characters[18].label)}
-                  onToggleAdd={(added) => console.log("added:", added)}
+                  onPlayClick={() => playAudio(news.title, Characters[18].value)}
                 />
-              </div>
-            ))}
-          </div>
-        </div>
-
-
-        {/* Latest News */}
-        <div className="flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="title font-bold text-white-soft">最新ニュース</h2>
-            <Link href="/latest" className="flex items-center pt-2">
-              <p className="text-[#3A86FF]">すべて見る</p>
-              <ChevronRightIcon className="scale-[0.8] text-[#3A86FF] cursor-pointer" />
-            </Link>
-          </div>
-
-          <div className="flex-1 overflow-y-auto space-y-4 pb-[80px]">
-            {popularNews.slice(0, 10).map((news) => (
-              <VoiceNewsCard
-                key={news.title}
-                item={{
-                  title: news.title,
-                  imageUrl: news["hatena:imageurl"],
-                  subject: Array.isArray(news["dc:subject"])
-                    ? news["dc:subject"][1]
-                    : news["dc:subject"] || "未分類",
-                  body: news.body,
-                  link: news.link
-                }}
-                onToggleAdd={(added) => console.log("added:", added)}
-                onPlayClick={() => playAudio(news.title, Characters[18].label)}
-              />
-            ))}
-          </div>
+              ))}
+            </div>
+          </section>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

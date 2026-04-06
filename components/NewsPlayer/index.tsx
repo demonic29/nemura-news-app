@@ -115,7 +115,7 @@ export default function NewsPlayer({
   }, [isPlaying, sleepMinutes, router, setIsPlaying])
 
   return (
-    <div className="w-full max-w-xl h-[100svh] flex flex-col">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-[30rem] flex-col pb-4">
 
       {/* Hidden audio element */}
       <audio
@@ -147,12 +147,12 @@ export default function NewsPlayer({
       />
 
       {/* 上：固定 */}
-      <div className="shrink-0 space-y-4 pb-[36px]">
+      <div className="shrink-0 space-y-3 pb-6 sm:space-y-4 sm:pb-8">
         {showNemura && <SpeechNemura isPlaying={isPlaying && !!audioUrl} />}
-        <div className="px-8">
+        <div className="px-4 sm:px-6">
           <NewsHeader title={item.title} />
         </div>
-        <div className="px-8">
+        <div className="px-4 sm:px-6">
           <AudioSeekBar
             duration={actualDuration}
             current={currentTime}
@@ -164,7 +164,7 @@ export default function NewsPlayer({
       </div>
 
       {/* 本文：レスポンシブ＋スクロール */}
-      <div className="flex-1 max-h-[6lh] overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {
           audioUrl ? (
             <NewsBody body={item.body || '詳細はありません'} />
@@ -185,7 +185,7 @@ export default function NewsPlayer({
           onRewind={() => { if (audioRef.current) audioRef.current.currentTime -= 10 }}
           onForward={() => { if (audioRef.current) audioRef.current.currentTime += 10 }}
         />
-        <div className="pt-[16px]">
+        <div className="pt-4 sm:pt-[16px]">
           <ControlBar
             playbackSpeed={playbackSpeed}
             setPlaybackSpeed={setPlaybackSpeed}

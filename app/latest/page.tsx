@@ -1,19 +1,13 @@
 "use client";
 
-import { ArrowRightIcon, AddCircleIcon, PlayCircleIcon } from "@/assets/icons";
 import { useEffect, useState } from "react";
-import Image from "next/image";
-import HeaderNav from "@/components/HeaderNav";
-import SafeImage from "@/components/SafeImage";
-import axios from "axios";
-import { Characters } from '../ai-character/config';
+
 import LatestNewsCard from "@/components/LatestNewsCard"
-import { playAudio } from "../lib/audio";
 import NavigationHeader from "@/components/NavigationHeader";
+import { HatenaNewsItem, getHatenaNewsSubject } from "@/app/lib/news";
 
 export default function LatestPage() {
-  const [popularNews, setpopularNews] = useState<any[]>([]);
-  const [newTopics, setnewTopics] = useState<any[]>([]);
+  const [popularNews, setPopularNews] = useState<HatenaNewsItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -21,34 +15,23 @@ export default function LatestPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.error) setError(data.error);
-        else setpopularNews(data);
+        else setPopularNews(data);
       })
       .catch(() => setError("Failed to load data"));
   }, []);
-
-  // 音声再生
-  const [character, setCharacter] = useState<string>('');
 
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
 
   const filteredNews = selectedTopic
     ? popularNews.filter((item) => {
-      const subject = Array.isArray(item["dc:subject"])
-        ? item["dc:subject"][1]
-        : item["dc:subject"];
-      return subject === selectedTopic;
+      return getHatenaNewsSubject(item) === selectedTopic;
     })
     : popularNews;
 
   // Get unique topics
   const uniqueTopics = Array.from(
     new Set(
-      popularNews.map((item) => {
-        const subject = Array.isArray(item["dc:subject"])
-          ? item["dc:subject"][1]
-          : item["dc:subject"];
-        return subject;
-      })
+      popularNews.map((item) => getHatenaNewsSubject(item))
     )
   );
 
@@ -86,7 +69,7 @@ export default function LatestPage() {
         {/* news */}
         <div className="space-y-4">
           {filteredNews.slice(0, 10).map((i, index) => (
-            <LatestNewsCard key={index} i={i} playAudio={playAudio} />
+            <LatestNewsCard key={index} item={i} />
           ))}
         </div>
       </div>

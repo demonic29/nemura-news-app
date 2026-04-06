@@ -1,11 +1,11 @@
-// NewsCard.tsx
+// PlaylistCard.tsx
 
 'use client'
 
-import SafeImage from './SafeImage'
-import { useState } from 'react'
-import { AddCircleIcon, RemoveCircleIcon, PlayCircleIcon } from "@/assets/icons"
 import Link from 'next/link'
+
+import SafeImage from './SafeImage'
+import { RemoveCircleIcon, PlayCircleIcon } from "@/assets/icons"
 
 export type VoiceItem = {
     title: string
@@ -17,7 +17,6 @@ export type VoiceItem = {
 
 export type NewsCardProps = {
     item: VoiceItem
-    isAdded?: boolean
     onPlayClick?: () => void
     onToggleAdd?: (added: boolean) => void
     isPlaylistMode?: boolean
@@ -25,77 +24,72 @@ export type NewsCardProps = {
 
 export default function PlaylistCard({
     item,
-    isAdded = false,
     onPlayClick,
     onToggleAdd,
     isPlaylistMode = false,
 }: NewsCardProps) {
-    const [added, setAdded] = useState(isAdded)
-
-    const handleToggleAdd = (e: React.MouseEvent) => {
-        e.stopPropagation()
-        setAdded(!added)
-        onToggleAdd?.(!added)
-    }
-
-    // subject を item["dc:subject"] から取得
     const subject =
         Array.isArray(item["dc:subject"])
-            ? item["dc:subject"][1] || "未分類"
+            ? item["dc:subject"][1] || item["dc:subject"][0] || "未分類"
             : item["dc:subject"] || item.subject || "未分類"
 
-    // 画像は item.imageUrl 優先、それがなければ item["hatena:imageurl"]
     const imageUrl = item.imageUrl || item["hatena:imageurl"]
+    const detailHref = `/playlist/${encodeURIComponent(item.title)}`
 
     return (
-        <div>
-            <div
-                className="flex w-full mb-4 h-[100px] bg-[#3A86FF]/10 rounded-xl overflow-hidden relative cursor-pointer hover:bg-[#3A86FF]/20 transition-colors"
-            >
-
-                {/* 画像 */}
-                <Link href={`/playlist/${encodeURIComponent(item.title)}`} className="w-[100px] h-full relative flex-shrink-0">
+        <div className="rounded-[24px] border border-white/10 bg-white/[0.06] p-3 shadow-[0_16px_40px_rgba(0,0,0,0.12)] transition-colors hover:bg-white/[0.08]">
+            <div className="flex items-center gap-4">
+                <Link
+                    href={detailHref}
+                    className="relative h-[92px] w-[92px] flex-shrink-0 overflow-hidden rounded-[20px] bg-white/10"
+                >
                     {imageUrl && (
                         <SafeImage
                             src={imageUrl}
                             alt={item.title}
                             fill
                             className="object-cover"
-                            sizes="(max-width: 740px) 100vw"
+                            sizes="92px"
                         />
                     )}
                 </Link>
 
-                {/* テキスト */}
-                <div className="flex-grow flex flex-col relative px-2 pt-3">
-                    <h3 className="text-sm font-semibold line-clamp-2 text-white">
-                        {item.title}
-                    </h3>
-                    <div className="absolute bottom-2 left-0 px-2 text-xs text-gray-400">
-                        {subject}
-                    </div>
+                <div className="min-w-0 flex-1">
+                    <Link href={detailHref} className="block min-w-0">
+                        <span className="inline-flex max-w-full rounded-full bg-[#3A86FF]/15 px-2.5 py-1 text-[11px] font-medium text-blue-100">
+                            {subject}
+                        </span>
+                        <h3 className="mt-2 line-clamp-2 text-[15px] font-semibold leading-5 text-white-soft">
+                            {item.title}
+                        </h3>
+                    </Link>
+
+                    <p className="mt-3 text-xs text-white/50">
+                        {isPlaylistMode ? "プレイリストに保存済み" : "あとで聞くニュース"}
+                    </p>
                 </div>
 
-                {/* アクションボタン（常にアイコン） */}
-                <div className="absolute bottom-1 right-2 flex items-center space-x-2">
+                <div className="flex flex-col gap-2">
                     <button
-                        onClick={handleToggleAdd}
-                        className="p-1 hover:opacity-70 transition-opacity"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onPlayClick?.()
+                        }}
+                        className="flex h-10 w-10 items-center justify-center rounded-full bg-[#3A86FF]/18 text-blue-100 transition-colors hover:bg-[#3A86FF]/28"
+                        aria-label={`${item.title} を再生`}
                     >
-                        {isPlaylistMode ? (
-                            <RemoveCircleIcon className="w-7 h-7 text-gray-400" />
-                        ) : added ? (
-                            <RemoveCircleIcon className="w-7 h-7 text-gray-400" />
-                        ) : (
-                            <AddCircleIcon className="w-7 h-7 text-gray-400" />
-                        )}
+                        <PlayCircleIcon className="h-6 w-6" />
                     </button>
 
                     <button
-                        onClick={(e) => { e.stopPropagation(); onPlayClick?.() }}
-                        className="p-1 hover:opacity-70 transition-opacity"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onToggleAdd?.(false)
+                        }}
+                        className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/65 transition-colors hover:bg-white/15 hover:text-white"
+                        aria-label={`${item.title} をプレイリストから削除`}
                     >
-                        <PlayCircleIcon className="w-7 h-7 text-gray-400" />
+                        <RemoveCircleIcon className="h-6 w-6" />
                     </button>
                 </div>
             </div>

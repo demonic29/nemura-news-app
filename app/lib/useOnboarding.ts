@@ -1,6 +1,6 @@
 // libs/useOnboarding.ts
 import { useEffect, useState } from "react";
-import { auth, db } from "@/app/lib/firebase/firebase";
+import { auth, db } from "@/app/lib/config/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 

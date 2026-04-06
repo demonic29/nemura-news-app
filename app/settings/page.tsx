@@ -5,9 +5,9 @@ import { useState } from "react"
 import Background from "@/components/Background"
 import NavigationHeader from "@/components/NavigationHeader"
 import LottiePlayer from "@/components/LottiePlayer"
-import { AddCircleIcon, GraphicIcon } from "@/assets/icons/index"
-import smileJson from "@/assets/animations/smile-nemura.json"
-import { auth, db } from "@/app/lib/firebase/firebase" // Adjust import path as needed
+import { AddCircleIcon, GraphicIcon } from "@/app/assets/icons/index"
+import smileJson from "@/app/assets/animations/smile-nemura.json"
+import { auth, db } from "@/app/lib/config/firebase"
 import { signOut } from "firebase/auth"
 import { doc, deleteDoc } from "firebase/firestore"
 

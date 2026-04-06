@@ -39,15 +39,25 @@ export default function VerticalNewsCard({
 
   return (
     <Link href={`/topic/${encodeURIComponent(item.title)}`}>
-      <div className="flex flex-col w-[220px] h-[214px] bg-[#3A86FF]/10 rounded-xl overflow-hidden shadow-lg relative cursor-pointer hover:bg-[#3A86FF]/20 transition-colors">
+      <div className="relative flex h-[14.5rem] w-[13.75rem] flex-col overflow-hidden rounded-2xl bg-[#3A86FF]/10 shadow-lg transition-colors hover:bg-[#3A86FF]/20 sm:h-[15.5rem] sm:w-[15rem]">
         
-        <div className="relative h-[300px] w-full">
-          {imageUrl && <SafeImage src={imageUrl} alt={item.title} fill sizes="(max-width: 740px) 100vw" className="object-cover" />}
+        <div className="relative h-[13rem] w-full sm:h-[10rem]">
+          {imageUrl && (
+            <SafeImage
+              src={imageUrl}
+              alt={item.title}
+              fill
+              sizes="(max-width: 640px) 13.75rem, 15rem"
+              className="object-cover"
+            />
+          )}
         </div>
 
-        <div className="p-3 text-white relative flex flex-col h-full">
-          <h3 className="text-sm font-semibold leading-5 min-h-[2.5rem] line-clamp-2">{item.title}</h3>
-          <span className="text-xs text-gray-400 mt-auto">{subject}</span>
+        <div className="relative flex h-full flex-col p-3 text-white">
+          <h3 className="normal line-clamp-3">
+            {item.title}
+          </h3>
+          <span className="desc mt-auto">{subject}</span>
 
           {/* <div className="absolute bottom-2 right-3 flex items-center space-x-3 text-gray-400">
             <button onClick={handleToggleAdd} className="hover:opacity-70 transition-opacity">

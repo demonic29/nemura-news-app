@@ -9,8 +9,8 @@ export default function LottiePlayer({
   loop = true,
 }: {
   data: any;
-  width?: number;
-  height?: number;
+  width?: number | string;
+  height?: number | string;
   loop?: boolean;
 }) {
   return (

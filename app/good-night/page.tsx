@@ -162,11 +162,11 @@ export default function GoodNightPage() {
                 {formattedTime}
               </div>
 
-              <Link href="/" className="">
+              {/* <Link href="/" className="">
                 <div className="bg-blue-900 text-white-soft/70  backdrop-blur-sm rounded-xl px-6 py-2">
                    ホームに戻る 
                 </div>
-              </Link>
+              </Link> */}
             </div>
           )}
 

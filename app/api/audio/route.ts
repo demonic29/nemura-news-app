@@ -1,34 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server'
-import axios from 'axios'
+import { NextRequest, NextResponse } from "next/server";
+
+import { synthesizeVoice } from "@/app/lib/config/voicevox";
+
+type AudioRequestBody = {
+  speaker?: string;
+  text?: string;
+};
 
 export async function POST(req: NextRequest) {
   try {
-    // テキストとキャラクターを取得
-    const { text, speaker } = await req.json()
+    const { text, speaker } = (await req.json()) as AudioRequestBody;
 
-    // 音声合成用のクエリ作成
-    const responseQuery = await axios.post(
-      `${process.env.VOICEVOX_URL}/audio_query?speaker=${speaker}&text=${text}`
-    )
+    if (!text || !speaker) {
+      return NextResponse.json(
+        { error: "Both text and speaker are required." },
+        { status: 400 },
+      );
+    }
 
-    // クエリを取得
-    const query = responseQuery.data
+    const audioBuffer = await synthesizeVoice(text, speaker);
+    const base64Data = audioBuffer.toString("base64");
 
-    // 音声を合成
-    const responseSynthesis = await axios.post(
-      `${process.env.VOICEVOX_URL}/synthesis?speaker=${speaker}`,
-        query,
-        {
-            responseType: 'arraybuffer',
-        }
-    )
-
-    // base64形式に変換
-    const base64Data = Buffer.from(responseSynthesis.data, 'binary').toString('base64')
-
-    return NextResponse.json({ response: base64Data })
+    return NextResponse.json({ response: base64Data });
   } catch (error) {
-    console.log('error', error)
-    return NextResponse.error()
+    console.error("Failed to synthesize voice preview:", error);
+    return NextResponse.json(
+      { error: "Failed to generate audio preview." },
+      { status: 500 },
+    );
   }
 }

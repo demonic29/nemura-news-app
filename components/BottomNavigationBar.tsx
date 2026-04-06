@@ -25,7 +25,7 @@ export default function BottomNavigationBar() {
                 {navItems.map((item) => {
                     const isActive = pathname === item.path
                     const Icon = item.icon
-                    const iconSizeClass = item.small ? 'scale-[1]' : 'scale-[1.6]'
+                    const iconSizeClass = item.small ? 'scale-[1]' : 'scale-[1.4]'
 
                     return (
                         <button
@@ -35,7 +35,7 @@ export default function BottomNavigationBar() {
                         >
                             <div className="relative flex items-center justify-center">
                                 <Icon
-                                    className={`transition-colors duration-300 ${isActive ? 'text-button' : 'text-white-soft'
+                                    className={`transition-colors duration-300  ${isActive ? 'text-button' : 'text-white-soft'
                                         } ${iconSizeClass}`}
                                 />
                             </div>

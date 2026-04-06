@@ -1,13 +1,25 @@
 // api / pregenerate-news-audio / route.ts
 
 import { NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/app/lib/supabase/supabase"
 
-const VOICEVOX_URL = process.env.VOICEVOX_URL || "http://localhost:50021"
+import { supabase } from "@/app/lib/config/supabase"
+import { synthesizeVoice } from "@/app/lib/config/voicevox"
+
+type PregenerateNewsAudioBody = {
+  description?: string
+  newsId?: string
+  speaker?: string
+  title?: string
+}
+
+type AppError = Error & {
+  stack?: string
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { newsId, title, description, speaker } = await req.json()
+    const { newsId, title, description, speaker } =
+      (await req.json()) as PregenerateNewsAudioBody
 
     // Validate required fields
     if (!title || !description || !speaker) {
@@ -62,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     // Generate audio with VoiceVox
     console.log("Generating new audio with VoiceVox...")
-    const audioBuffer = await generateAudioWithVoiceVox(fullText, speaker)
+    const audioBuffer = await synthesizeVoice(fullText, speaker)
     
     // Upload to Supabase Storage
     const fileName = `${effectiveNewsId}-${speaker}-${Date.now()}.wav`
@@ -110,64 +122,16 @@ export async function POST(req: NextRequest) {
       cached: false
     })
 
-  } catch (error: any) {
+  } catch (error) {
+    const appError = error as AppError
     console.error("Error generating audio:", error)
     return NextResponse.json(
       { 
-        error: error.message || "Failed to generate audio",
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        error: appError.message || "Failed to generate audio",
+        details: process.env.NODE_ENV === 'development' ? appError.stack : undefined
       },
       { status: 500 }
     )
-  }
-}
-
-async function generateAudioWithVoiceVox(text: string, speaker: string): Promise<Buffer> {
-  try {
-    console.log(`Querying VoiceVox at ${VOICEVOX_URL}...`)
-    
-    // Query audio
-    const queryResponse = await fetch(
-      `${VOICEVOX_URL}/audio_query?text=${encodeURIComponent(text)}&speaker=${speaker}`,
-      { 
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        }
-      }
-    )
-    
-    if (!queryResponse.ok) {
-      const errorText = await queryResponse.text()
-      console.error("VoiceVox query error:", queryResponse.status, errorText)
-      throw new Error(`Failed to query audio from VoiceVox: ${queryResponse.status} - ${errorText}`)
-    }
-
-    const audioQuery = await queryResponse.json()
-    console.log("Audio query successful, synthesizing...")
-
-    // Synthesize audio
-    const synthesisResponse = await fetch(
-      `${VOICEVOX_URL}/synthesis?speaker=${speaker}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(audioQuery)
-      }
-    )
-
-    if (!synthesisResponse.ok) {
-      const errorText = await synthesisResponse.text()
-      console.error("VoiceVox synthesis error:", synthesisResponse.status, errorText)
-      throw new Error(`Failed to synthesize audio from VoiceVox: ${synthesisResponse.status} - ${errorText}`)
-    }
-
-    console.log("Audio synthesis successful")
-    return Buffer.from(await synthesisResponse.arrayBuffer())
-    
-  } catch (error: any) {
-    console.error("VoiceVox generation error:", error)
-    throw new Error(`VoiceVox error: ${error.message}`)
   }
 }
 

@@ -21,7 +21,7 @@ export default function ControlBar({ playbackSpeed, setPlaybackSpeed, sleepMinut
   const router = useRouter()
 
   return (
-    <div className="flex items-center justify-between px-10 h-[60px] w-full bg-transparent relative">
+    <div className="relative flex h-[60px] w-full items-center justify-between px-6 sm:px-10">
 
       {/* 再生速度 */}
       <div className="relative">
@@ -29,7 +29,7 @@ export default function ControlBar({ playbackSpeed, setPlaybackSpeed, sleepMinut
           onClick={() => setSpeedOpen(!speedOpen)}
           className="text-white-soft/80 hover:text-white transition-colors"
         >
-          <OnexMobiledataIcon className="scale-[1.5]" />
+          <OnexMobiledataIcon className="scale-[1.3] sm:scale-[1.5]" />
         </button>
 
         <div className="relative">
@@ -66,7 +66,7 @@ export default function ControlBar({ playbackSpeed, setPlaybackSpeed, sleepMinut
           onClick={() => setSleepOpen(!sleepOpen)}
           className="text-white-soft/80 hover:text-white transition-colors"
         >
-          <BedtimeIcon className="scale-[1.3]" />
+          <BedtimeIcon className="scale-[1.15] sm:scale-[1.3]" />
         </button>
 
         <div className="relative">
@@ -100,7 +100,7 @@ export default function ControlBar({ playbackSpeed, setPlaybackSpeed, sleepMinut
         onClick={() => router.push('/playlist')}
         className="text-white-soft/80 hover:text-white transition-colors"
       >
-        <PlayListAddCheckIcon className="scale-[1.6]" />
+        <PlayListAddCheckIcon className="scale-[1.35] sm:scale-[1.6]" />
       </button>
 
     </div>

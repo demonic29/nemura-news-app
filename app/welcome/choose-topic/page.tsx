@@ -11,12 +11,12 @@ import {
   ArrowRightIcon,
   AddCircleIcon,
   RemoveCircleIcon
-} from "@/assets/icons";
+} from "@/app/assets/icons";
 
-import smileJson from "@/assets/animations/smile-nemura.json";
+import smileJson from "@/app/assets/animations/smile-nemura.json";
 
 // firebase
-import { auth, db } from "@/app/lib/firebase/firebase";
+import { auth, db } from "@/app/lib/config/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function TopicSelectionPage() {
